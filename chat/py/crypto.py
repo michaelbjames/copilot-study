@@ -7,7 +7,6 @@ from tinyec import ec
 import random
 import json
 import math
-import base64
 
 BYTE_ORDER = "big"
 DH_MESSAGE_SIZE_BYTES = 32
@@ -18,7 +17,7 @@ class Crypto(object):
         self.cipher = None
 
     @classmethod
-    def type_name(cls):
+    def _type_name(cls):
         return cls.__name__
 
     @classmethod
@@ -39,7 +38,7 @@ class Crypto(object):
             "key": <key object>
         }
         """
-        key_type = cls.type_name()
+        key_type = cls._type_name()
         key = {
             "type": key_type,
             "key": cls._serialize_key_obj(key)
@@ -55,7 +54,7 @@ class Crypto(object):
         key_obj = json.loads(key_repr)
         key_type = key_obj["type"]
         key_bytes = key_obj["key"]
-        if key_type != cls.type_name():
+        if key_type != cls._type_name():
             raise ValueError("Invalid key type")
         return cls._deserialize_key_obj(key_bytes)
 
@@ -103,7 +102,6 @@ class PrimeDiffieHellman(Crypto):
         return (self.g ** priv_key) % self.p
 
     def _combine_secret(self, priv_key, other_pub_key):
-        print(f"other_pub_key: {other_pub_key}")
         return (other_pub_key ** priv_key) % self.p
 
 class ECDiffieHellman(Crypto):

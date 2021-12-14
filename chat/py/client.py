@@ -24,8 +24,6 @@ from Crypto.Cipher import AES
 from Crypto.Util import Padding
 import socket
 import sys
-import os
-import random
 import select
 
 import crypto
@@ -55,7 +53,7 @@ class Chat(object):
                 # Read from stdin
                 message = sys.stdin.readline()
                 # Send the message to the server
-                if len(message) == 0:
+                if len(message) == 0 or message == "/quit\n":
                     # EOF
                     print("disconnecting...")
                     return
@@ -81,6 +79,8 @@ class Chat(object):
         """
         message = self.sock.recv(4096)
         message = self.crypto.cipher.decrypt(message)
+        if len(message) == 0:
+            return
         # Remove padding
         message = Padding.unpad(message, AES.block_size)
         # Decode the message and print without a newline

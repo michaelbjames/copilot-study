@@ -1,26 +1,5 @@
 #!/usr/bin/env python3
 
-"""
-MyRC Server.
-
-MyRC is a chat server only allowing authorized clients to connect.
-
-Connecting:
-1. Server listens for incoming TCP connections on port 4040.
-2. Client connects and initiates a diffie-hellman exchange.
-    a. Client & Server independently generate random numbers a & b.
-    b. Client sends g ** a mod p to the server.
-    c. Server sends g ** b mod p to the client.
-    The shared secret is g ** (a * b) mod p.
-    All communication is now over AES-256-ECB with the shared secret as the key.
-Handshake is complete.
-3. Client sends a username to the server.
-4. Server checks if the username is available.
-    a. If available, the server sends a confirmation to the client.
-    b. If unavailable, the server sends a rejection to the client.
-5. Client can send a message to the server.
-6. Server sends the message to all other clients.
-"""
 import socket
 import sys
 import threading
@@ -123,6 +102,37 @@ class Server(object):
             self.username_list.remove(client.username)
         del self.clients[client.addr]
 
+    def send_all(self, msg):
+        for client_addr, client_data in self.clients.items():
+            client_data["client"].send_message(msg)
+
+    def handle_msg(self, client, msg):
+        if len(msg) == 0:
+            return
+        if msg[0] == "/":
+            msg = msg.strip()
+            if msg == "/quit":
+                self.close_connection(client)
+                return
+            elif msg == "/list":
+                client.send_message("\n".join(self.username_list) + "\n")
+                return
+            elif msg == "/help":
+                client.send_message("""
+/quit - quit the chat
+/list - list usernames
+/help - show this help message
+""")
+                return
+            else:
+                client.send_message("Invalid command. Type /help for help.")
+                return
+        else:
+            for client_addr, client_data in self.clients.items():
+                if client_addr != client.addr:
+                    client_data["client"].send_message("{}: {}".format(client.username, msg))
+
+
     def handle_client(self, client):
         """
         Handle a client connection:
@@ -141,20 +151,17 @@ class Server(object):
                 self.close_connection(client)
                 return
             client.username = username
-            client.send_message("Welcome {}!\n".format(username))
+            self.send_all("Welcome {}!\n".format(username))
             while True:
                 got = client.conn.recv(MESSAGE_SIZE_BYTES)
                 msg = client.decrypt_msg(got)
                 if msg is None:
                     self.close_connection(client)
                     return
-                print("Received message: {}".format(msg))
-                for src in self.clients:
-                    c = self.clients[src]["client"]
-                    if c.conn != client.conn:
-                        attributed_msg = "{}: {}".format(client.username, msg)
-                        c.send_message(attributed_msg)
-
+                self.handle_msg(client, msg)
+        except OSError:
+            # self.close_connection(client)
+            return
         except ConnectionError:
             self.close_connection(client)
             return
