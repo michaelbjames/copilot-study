@@ -30,9 +30,9 @@ import os
 from Crypto.Cipher import AES
 from Crypto.Util import Padding
 
+import crypto
+
 PORT_NUMBER = 4040
-G = 2
-P = 97
 BYTE_ORDER = "big"
 DH_MESSAGE_SIZE_BYTES = 32
 MESSAGE_SIZE_BYTES = 2048
@@ -46,32 +46,29 @@ class Client(object):
         self.conn = conn
         self.addr = addr
         self.username = None
-        self.cipher = None
+        self.crypto = crypto.ECDiffieHellman()
 
     def do_dh_handshake(self):
-        a = random.randint(2, P - 1)
-        ga = G ** a % P
-        ga_wire = ga.to_bytes(DH_MESSAGE_SIZE_BYTES, BYTE_ORDER)
-        self.conn.send(ga_wire)
-
-        b_bytes = self.conn.recv(DH_MESSAGE_SIZE_BYTES)
-        gb = int.from_bytes(b_bytes, byteorder=BYTE_ORDER)
-        shared_secret = gb ** a % P
-        print("Shared secret: {}".format(shared_secret))
-        shared_secret_bytes = shared_secret.to_bytes(DH_MESSAGE_SIZE_BYTES, BYTE_ORDER)
-        print("Shared secret bytes: {}".format(shared_secret_bytes.hex()))
-        self.cipher = AES.new(shared_secret_bytes, AES.MODE_ECB)
+        pubkey, complete_handshake = self.crypto.handshake()
+        self.conn.send(pubkey)
+        b_bytes = self.conn.recv(MESSAGE_SIZE_BYTES)
+        other_pub_key = self.crypto.deserialize_key(b_bytes)
+        complete_handshake(other_pub_key)
 
     def send_message(self, msg:str):
         msg_bytes = msg.encode()
         msg_data = Padding.pad(msg_bytes, AES.block_size)
-        self.conn.send(self.cipher.encrypt(msg_data))
+        self.conn.send(self.crypto.cipher.encrypt(msg_data))
 
     def decrypt_msg(self, ciphertext):
-        message_padded = self.cipher.decrypt(ciphertext)
-        if len(message_padded) == 0:
+        try:
+            message_padded = self.crypto.cipher.decrypt(ciphertext)
+            if len(message_padded) == 0:
+                return None
+            return Padding.unpad(message_padded, AES.block_size).decode()
+        except ValueError as e:
+            print("Error decrypting message: {}".format(e))
             return None
-        return Padding.unpad(message_padded, AES.block_size).decode()
 
 
 class Server(object):

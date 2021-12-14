@@ -28,20 +28,20 @@ import os
 import random
 import select
 
-G = 2
-P = 97
+import crypto
+
 BYTE_ORDER = "big"
-DH_MESSAGE_SIZE_BYTES = 32
+MESSAGE_SIZE_BYTES = 2048
 
 
 class Chat(object):
     def __init__(self, sock):
         self.sock = sock
-        self.key_bytes = None
+        self.crypto = crypto.ECDiffieHellman()
 
     def start(self):
         self.dh_handshake()
-        self.cipher = AES.new(self.key_bytes, AES.MODE_ECB)
+        # self.cipher = AES.new(self.key_bytes, AES.MODE_ECB)
 
         # Wait for input from either stdin or the server,
         # using the select() system call.
@@ -72,7 +72,7 @@ class Chat(object):
         """
         msg_bytes = msg.encode()
         msg_padded = Padding.pad(msg_bytes, AES.block_size)
-        ciphertext = self.cipher.encrypt(msg_padded)
+        ciphertext = self.crypto.cipher.encrypt(msg_padded)
         self.sock.send(ciphertext)
 
     def recv_msg(self):
@@ -80,7 +80,7 @@ class Chat(object):
         Receive a message.
         """
         message = self.sock.recv(4096)
-        message = self.cipher.decrypt(message)
+        message = self.crypto.cipher.decrypt(message)
         # Remove padding
         message = Padding.unpad(message, AES.block_size)
         # Decode the message and print without a newline
@@ -92,17 +92,11 @@ class Chat(object):
         Return the key as bytes.
         Output must be 32 bytes long. (for a 256-bit AES key)
         """
-        # 1. Accept the server's G**a % P
-        ga_wire = self.sock.recv(DH_MESSAGE_SIZE_BYTES)
-        ga = int.from_bytes(ga_wire, byteorder=BYTE_ORDER)
-        # 2. Choose a randome value of b [2, P-1]
-        b = random.randint(2, P-1)
-        # 3. Send your own G**b % P
-        self.sock.send((G**b % P).to_bytes(DH_MESSAGE_SIZE_BYTES, byteorder=BYTE_ORDER))
-        # 4. Your secret key is (G**a % P) ** b % P
-        key = (ga ** b) % P
-        self.key_bytes = key.to_bytes(32, byteorder=BYTE_ORDER)
-        return key
+        ga_wire = self.sock.recv(MESSAGE_SIZE_BYTES)
+        ga = self.crypto.deserialize_key(ga_wire)
+        pubkey, complete_handshake = self.crypto.handshake()
+        complete_handshake(ga)
+        self.sock.send(pubkey)
 
 
 def main():
