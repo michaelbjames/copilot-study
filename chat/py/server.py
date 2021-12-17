@@ -3,17 +3,10 @@
 import socket
 import sys
 import threading
-import time
-import random
-import os
-from Crypto.Cipher import AES
-from Crypto.Util import Padding
 
 import crypto
 
 PORT_NUMBER = 4040
-BYTE_ORDER = "big"
-DH_MESSAGE_SIZE_BYTES = 32
 MESSAGE_SIZE_BYTES = 2048
 
 def main():
@@ -36,15 +29,14 @@ class Client(object):
 
     def send_message(self, msg:str):
         msg_bytes = msg.encode()
-        msg_data = Padding.pad(msg_bytes, AES.block_size)
-        self.conn.send(self.crypto.cipher.encrypt(msg_data))
+        self.conn.send(self.crypto.encrypt(msg_bytes))
 
     def decrypt_msg(self, ciphertext):
         try:
-            message_padded = self.crypto.cipher.decrypt(ciphertext)
-            if len(message_padded) == 0:
+            message = self.crypto.decrypt(ciphertext)
+            if message is None:
                 return None
-            return Padding.unpad(message_padded, AES.block_size).decode()
+            return message.decode()
         except ValueError as e:
             print("Error decrypting message: {}".format(e))
             return None
@@ -160,7 +152,6 @@ class Server(object):
                     return
                 self.handle_msg(client, msg)
         except OSError:
-            # self.close_connection(client)
             return
         except ConnectionError:
             self.close_connection(client)

@@ -1,27 +1,5 @@
 #!/usr/bin/env python3
 
-"""
-MyRC - Client
-
-MyRC is a chat client for the MyRC project.
-There are no rooms, but many users in one big room.
-Chats are encrypted with AES-256.
-
-Connecting:
-1. Open a TCP connection to the server.
-2. Complete the Diffie-Hellman handshake.
-    1. Accept the server's G**a % P
-    2. Choose a randome value of b [2, P-1]
-    3. Send your own G**b % P
-    4. Your secret key is (G**a % P) ** b % P
-3. Seed AES with the secret key.
-4. Send your username.
-5. Wait for the server to send a message, either accept or reject.
-6. If reject, send a new username.
-7. If accept, begin sending/receiving messages
-"""
-from Crypto.Cipher import AES
-from Crypto.Util import Padding
 import socket
 import sys
 import select
@@ -69,20 +47,17 @@ class Chat(object):
         Encrypt and send a message.
         """
         msg_bytes = msg.encode()
-        msg_padded = Padding.pad(msg_bytes, AES.block_size)
-        ciphertext = self.crypto.cipher.encrypt(msg_padded)
+        ciphertext = self.crypto.encrypt(msg_bytes)
         self.sock.send(ciphertext)
 
     def recv_msg(self):
         """
         Receive a message.
         """
-        message = self.sock.recv(4096)
-        message = self.crypto.cipher.decrypt(message)
-        if len(message) == 0:
+        message_bytes = self.sock.recv(MESSAGE_SIZE_BYTES)
+        message = self.crypto.decrypt(message_bytes)
+        if message is None:
             return
-        # Remove padding
-        message = Padding.unpad(message, AES.block_size)
         # Decode the message and print without a newline
         print(message.decode(), end="", flush=True)
 
