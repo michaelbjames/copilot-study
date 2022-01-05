@@ -28,6 +28,7 @@ is only one big room for all clients. All clients should have unique usernames.
 
 ## Protocol
 The server's protocol is simple:
+0. Client connects to server. A TCP connection on port 4040 is default.
 1. Client and server perform a handshake to establish a shared secret key.
 2. Server asks for a username
 3. Client gives a username
@@ -82,10 +83,14 @@ While implementing these tasks, you're welcome to (but not required to):
   solution server)
 
 Please DON'T:
-- read the solution code
+- read the solution code. It's in the same directory as your tasks so you can
+  test against them, and use the solutions in your imports.
 
 ## Task 1 Implement DiffieHellman Key Exchange, 2 ways
 The crypto library needs to be implemented.
+The superclass `Crypto` uses stubs and relies on its subclasses to actually
+implement the unimplemented methods. You do not need to change anything in the
+`Crypto` class itself.
 ### PrimeDiffieHellman
 Create an implementation of this crypto class
 using the traditional diffie-hellman key exchange protocol,
@@ -110,18 +115,19 @@ Create an implementation of this crypto class.
 It uses an elliptic curve to do a diffie-hellman key exchange.
 A Point on a Curve has two values: x and y.
 A Curve forms a field of points, which for our purposes means it's
-closed under multiplication.
+closed under multiplication, and the same above logic holds (although with a
+different operator instead of exponentiation).
 This process works as follows:
 Alice and Bob agree on a particular curve to use, "brainpoolP160r1"
 This curve has a generator point, g, and a prime, p.
 
-Alice's private key is a random number between 1 and the order of the field; curve.field.n
+Alice's private key is a random number between 1 and the order of the field: `curve.field.n`
 Alice computes her public key, which is the generator point on the curve
-multiplied by her private key. The tinyec library will do the actual
+*multiplied* by her private key. The `tinyec` library will do the actual
 elliptic curve math. The entire Point (x-y coords) is the public key.
 When Alice gets Bob's public key, she can compute the shared secret.
 Alice computes the shared secret Point as the product of her private key
-and Bob's public key. The secret _value_ is the x-coordinate of that point.
+and Bob's public key. The secret _value_ is the x-coordinate of that new point.
 
 ## Task 2: Implement the Client
 You have only the main function from the client and need to implement the rest.
@@ -134,7 +140,7 @@ console. Content from the server is put on screen and messages from the console
 are sent to the server.
 
 Import any packages you need. Remember, the cryptographic module provides the
-interfaces and implementations you'll need for that part.
+interfaces and implementations you'll need for the crypto part.
 
 ## Task 3 Implement the Server
 The business logic of the server is missing. You'll need to implement it.
