@@ -7,6 +7,8 @@ extern crate crypto_utils;
 extern crate openssl;
 extern crate rustc_serialize;
 extern crate rand;
+use crypto_utils::Crypto;
+use num::BigInt;
 use rustc_serialize::hex::ToHex;
 use std::thread;
 use std::io::*;
@@ -16,7 +18,8 @@ const LOCAL: &str = "127.0.0.1:6000";
 pub struct Client {
     conn: TcpStream,
     addr: SocketAddr,
-    username: Option<String>
+    username: Option<String>,
+    crypto: crypto_utils::PrimeDiffieHellman
 }
 
 impl Client {
@@ -24,23 +27,25 @@ impl Client {
         let conn = socket;
         let addr = address;
         let username = None;
+        let crypto = crypto_utils::PrimeDiffieHellman::new();
         Client {
             conn,
             addr,
-            username
+            username,
+            crypto
         }
     }
 
     pub fn decrypt_msg(&self, ciphertext: &[u8]) -> String {
-        let message = crypto_utils::Crypto::decrypt(ciphertext);
+        let message = self.crypto.decrypt(ciphertext);
         let text = std::str::from_utf8(&message).expect("Error decrypting message!");
         println!("Decrypted message: {}", &text.to_string());
         return text.to_string();
     }
 
-    pub fn send_message(&mut self, msg: String) {
+    pub fn send_message(&self, msg: String) {
         let msg_bytes = msg.as_bytes();
-        let encrypted_msg = crypto_utils::Crypto::encrypt(msg_bytes);
+        let encrypted_msg = self.crypto.encrypt(msg_bytes);
         println!("Server Sent: {}", &encrypted_msg.to_hex());
         self.conn.write(&encrypted_msg).unwrap();
         return;
@@ -61,8 +66,12 @@ impl Client {
         }
     }
 
-    pub fn do_dh_handshake(&self) {
-        //TODO: Implement DH handshake
+    fn do_dh_handshake(&mut self) {
+        let (pubkey, mut complete_handshake) = self.crypto.handshake();
+        self.send_message(String::from_utf8(pubkey).unwrap());
+        let b_bytes = self.receive_message();
+        let other_pub_key = self.crypto.deserialize(&b_bytes);
+        complete_handshake(other_pub_key);
     }
 }
 
@@ -74,9 +83,6 @@ pub struct Server {
 fn main() {   
     //Testing 
     let mut server = Server::new();
-    let encrypted = crypto_utils::Crypto::encrypt("sbarke".as_bytes());
-    let text = crypto_utils::Crypto::decrypt(&encrypted);
-    println!("{}", std::str::from_utf8(&text).unwrap().to_string());
     server.run();
 }
 

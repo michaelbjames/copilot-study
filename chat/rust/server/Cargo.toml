@@ -20,6 +20,7 @@ rustc-serialize = "0.3.24"
 byteorder = "1.4.3"
 num = "0.4.0"
 num-bigint = "0.4.3"
+json = "0.12.4"
 [lib]
 name = "crypto_utils"
 path = "../crypto_utils/src/crypto_utils.rs"

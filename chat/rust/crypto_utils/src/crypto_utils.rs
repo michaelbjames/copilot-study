@@ -1,41 +1,62 @@
 pub use bp256::r1::BrainpoolP256r1;
-use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian, LittleEndian};
-use num_bigint::ToBigInt;
-use num_bigint::ToBigUint;
-use std::io::{Write, Read};
-use openssl::symm::Mode;
-extern crate openssl;
-extern crate rustc_serialize;
+use json::JsonValue;
+use num::BigInt;
 extern crate rand;
 use rand::Rng;
-use rand::thread_rng;
-use openssl::symm::{Cipher, Crypter};
-use num_bigint::BigUint;
+use openssl::symm::{Cipher, Crypter, Mode};
+use byteorder::WriteBytesExt;
+use byteorder::BigEndian;
+use num::ToPrimitive;
 
- 
-pub struct Crypto {
-    cipher: Cipher,
-    //key: Vec<u8>
+pub trait Crypto {
+    fn new() -> Self;
+    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
+    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
+    fn gen_priv_key(&self) -> BigInt;
+    fn gen_pub_key(&self, priv_key: &mut BigInt) -> BigInt;
+    fn compute_shared_secret(&self, priv_key: &mut BigInt, other_pub_key: BigInt) -> BigInt;
+    fn handshake(&mut self) -> (Vec<u8>, Box<dyn FnMut(BigInt) + '_>);
+    fn serialize(&self, pub_key: &BigInt) -> Vec<u8>;
+    fn deserialize(&self, pub_key: &[u8]) -> BigInt;
+    fn init_key(&mut self, key: Vec<u8>) -> ();
 }
 
-impl Crypto {
-    
-    pub fn new() -> Crypto {
-        let cipher = Cipher::aes_128_ecb();
-        Crypto {
-            cipher,
+pub struct PrimeDiffieHellman {
+    p: usize,
+    g: usize,
+    cipher: Cipher,
+    key: Vec<u8>
+}
+
+impl Crypto for PrimeDiffieHellman {
+    fn new() -> PrimeDiffieHellman {
+        PrimeDiffieHellman {
+            cipher: Cipher::aes_128_cbc(),
+            key: vec![0; 16],
+            p: 997,
+            g: 2,
         }
     }
 
-    pub fn encrypt(plaintext: &[u8]) -> Vec<u8> {
-        let cipher = Crypto::new().cipher;
-        //let mut key = vec![];
-        let key = [134, 234, 34, 234, 34, 234, 34, 234, 34, 234, 34, 234, 34, 234, 34, 234];
+    fn gen_priv_key(&self) -> BigInt {
+        let mut rng = rand::thread_rng();
+        let priv_key = rng.gen_range(1..(self.p - 1));
+        return BigInt::from(priv_key);
+    }
 
-        //let key = Crypto::handshake();
+    fn gen_pub_key(&self, priv_key: &mut BigInt) -> BigInt {
+        let pub_key = BigInt::modpow(&BigInt::from(self.g), &priv_key, &BigInt::from(self.p));
+        return pub_key;
+    }
 
-        let mut ciphertext = vec![0; plaintext.len() + cipher.block_size()];
-        let mut crypter = Crypter::new(cipher, Mode::Encrypt, &key, None).unwrap();
+    fn compute_shared_secret(&self, priv_key: &mut BigInt, other_pub_key: BigInt) -> BigInt {
+        let secret = BigInt::modpow(&other_pub_key, &priv_key, &BigInt::from(self.p));
+        return secret;
+    }
+
+    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+        let mut ciphertext = vec![0; plaintext.len() + self.cipher.block_size()];
+        let mut crypter = Crypter::new(self.cipher, Mode::Encrypt, &self.key, None).unwrap();
         crypter.pad(true);
     
         let count = crypter.update(plaintext, &mut ciphertext).unwrap();
@@ -45,12 +66,9 @@ impl Crypto {
         ciphertext
     }
 
-    pub fn decrypt(data: &[u8]) -> Vec<u8> {
-        let cipher = Crypto::new().cipher;
-        let key = [134, 234, 34, 234, 34, 234, 34, 234, 34, 234, 34, 234, 34, 234, 34, 234];
-
-        let mut decrypted = Crypter::new(cipher, Mode::Decrypt, &key, None).unwrap();
-        let mut output = vec![0 as u8; data.len() + cipher.block_size()];
+    fn decrypt(&self, data: &[u8]) -> Vec<u8> {
+        let mut decrypted = Crypter::new(self.cipher, Mode::Decrypt, &self.key, None).unwrap();
+        let mut output = vec![0 as u8; data.len() + self.cipher.block_size()];
     
         let decrypted_result = decrypted.update(&data, &mut output);
     
@@ -60,66 +78,44 @@ impl Crypto {
         }
     }
 
-    pub fn handshake() -> Vec<u8> {
-        let pdh = PrimeDiffieHellman::new();
-        let priv_key = pdh.gen_priv_key();
-        let pub_key = pdh.gen_pub_key(priv_key);
-        //println!("Public Key: {}", pub_key);
-        //let shared_secret = pdh.compute_shared_secret(priv_key, pub_key);
-        let mut wtr = Vec::new();
-        wtr.write_u16::<BigEndian>(997).unwrap();
-        while wtr.len() != 16 {
-            wtr.push(0);
+    fn handshake(&mut self) -> (Vec<u8>, Box<dyn FnMut(BigInt) + '_>) {
+        let mut priv_key = self.gen_priv_key();
+        let pub_key = self.gen_pub_key(&mut priv_key);
+        let complete_handshake = move |other_pub_key| {
+            let shared_secret = self.compute_shared_secret(&mut priv_key, other_pub_key);
+            let mut wtr = Vec::new();
+            wtr.write_u16::<BigEndian>(ToPrimitive::to_u16(&shared_secret).unwrap()).unwrap();
+            while wtr.len() != 16 {
+                wtr.push(0);
+            }
+            self.init_key(wtr[..].to_vec());
+            return;
+        };
+        let pubkey_bytes = Vec::new(); //self.serialize(&pub_key);
+        return (pubkey_bytes, Box::new(complete_handshake));
+    }
+
+    fn init_key(&mut self, key: Vec<u8>) {
+        self.key = key;
+    }
+
+    fn serialize(&self, pub_key: &BigInt) -> Vec<u8> {
+        let mut key_data = json::JsonValue::new_object();
+        key_data["type"] = "PrimeDiffieHellman".into();
+        key_data["key_value"] = ToPrimitive::to_u16(pub_key).unwrap().into();
+        let key_json_str = key_data.dump();
+        return key_json_str.as_bytes().to_vec();
+    }
+
+    fn deserialize(&self, pub_key: &[u8]) -> BigInt {
+        let key_json_str = String::from_utf8(pub_key.to_vec()).unwrap();
+        let key_data: JsonValue = json::parse(&key_json_str).unwrap();
+        let key_value = key_data["key_value"].as_u16().unwrap();
+        if key_data["type"].as_str().unwrap() != "PrimeDiffieHellman" {
+            panic!("Invalid key type");
         }
-
-        //println!("{:?} {}", wtr, wtr.len());
-        return wtr[..].to_vec();
-    }  
+        return BigInt::from(key_value);
+    }
 }
 
-pub struct PrimeDiffieHellman {
-    p: usize,
-    g: usize
-}
-
-impl PrimeDiffieHellman {
-    pub fn new() -> PrimeDiffieHellman {  
-        PrimeDiffieHellman {
-            p: 997,
-            g: 2,
-        }  
-    }
-
-    pub fn serialize_key(&self, key: usize) {
-        
-    }
-
-    pub fn deserialize_key(&self, key: usize) {
-        
-    }
-
-    pub fn gen_priv_key(&self) -> usize {
-        let mut rng = rand::thread_rng();
-        let priv_key = rng.gen_range(1..(self.p - 1));
-        return priv_key;
-    }
-
-    pub fn gen_pub_key(&self, priv_key: usize) -> usize {
-        let pub_key = usize::pow(self.g, priv_key as u32) % self.p;
-        return pub_key;
-    }
-
-    pub fn compute_shared_secret(&self, priv_key: usize, other_pub_key: usize) -> usize {
-        let secret = other_pub_key.pow(priv_key as u32) % self.p;
-        return secret;
-    } 
-}
-pub struct ECDiffieHellman {
-    curve: BrainpoolP256r1,
-    priv_key: usize,
-    pub_key: usize
-}
-
-pub fn main() {
-    
-}
+pub fn main() {}
