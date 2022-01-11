@@ -1,16 +1,17 @@
 use std::collections::BTreeMap;
 
 pub use bp256::r1::BrainpoolP256r1;
-use json::JsonValue;
-use num::BigInt;
+use num::{BigInt, BigUint};
 extern crate rand;
 use rand::Rng;
 use openssl::symm::{Cipher, Crypter, Mode};
 use byteorder::WriteBytesExt;
 use byteorder::BigEndian;
 use num::ToPrimitive;
-extern crate rustc_serialize;
-//use rustc_serialize::json::{self, Json, ToJson};
+use rustc_serialize::hex::ToHex;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+
 pub trait Crypto {
     fn new() -> Self;
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
@@ -31,16 +32,9 @@ pub struct PrimeDiffieHellman {
     cipher: Cipher,
     key: Vec<u8>
 }
+#[derive(Serialize, Deserialize)]
 pub struct KeyData {
     key_val: u16
-}
-
-impl rustc_serialize::json::ToJson for KeyData {
-    fn to_json(&self) -> rustc_serialize::json::Json {
-        let mut d = BTreeMap::new();
-        d.insert("key_val".to_string(), self.key_val.to_json());
-        rustc_serialize::json::Json::Object(d)
-    }
 }
 
 impl Crypto for PrimeDiffieHellman {
@@ -97,11 +91,12 @@ impl Crypto for PrimeDiffieHellman {
         let mut priv_key = self.gen_priv_key();
         let pub_key = self.gen_pub_key(&mut priv_key);
         let pubkey_bytes = self.serialize(&pub_key);
-        return (priv_key, pubkey_bytes);
+        return (priv_key, pubkey_bytes.to_vec());
     }
 
     fn handshake(&mut self, priv_key: &mut BigInt, other_pub_key: BigInt) {
         let shared_secret = self.compute_shared_secret(priv_key, other_pub_key);
+        println!("Shared secret: {}", shared_secret);
         let mut wtr = Vec::new();
             wtr.write_u16::<BigEndian>(ToPrimitive::to_u16(&shared_secret).unwrap()).unwrap();
             while wtr.len() != 16 {
@@ -116,18 +111,21 @@ impl Crypto for PrimeDiffieHellman {
     }
 
     fn serialize(&self, pub_key: &BigInt) -> Vec<u8> {
-        let mut key_data = json::JsonValue::new_object();
-        key_data["key_val"] = ToPrimitive::to_u16(pub_key).unwrap().into();
-        let key_json_str = key_data.dump();
+        let key_data = KeyData {
+            key_val: ToPrimitive::to_u16(pub_key).unwrap(),
+        };
+        let key_json_str = serde_json::to_string(&key_data).unwrap();
         return key_json_str.as_bytes().to_vec();
     }
 
     fn deserialize(&self, pub_key: &[u8]) -> BigInt {
-        let key_json_str = String::from_utf8(pub_key.to_vec()).unwrap();
-        let key_data: JsonValue = json::parse(&key_json_str).unwrap();
-        let key_value = key_data["key_val"].as_u16().unwrap();
+        let key_json_str = String::from_utf8(pub_key.to_vec());
+        let key_json_str_trimmed = key_json_str.unwrap().trim_matches(char::from(0)).to_string();
+        let key_data: KeyData = serde_json::from_str(&key_json_str_trimmed).unwrap();
+        let key_value = key_data.key_val;
         return BigInt::from(key_value);
     }
 }
 
-pub fn main() {}
+pub fn main() {
+}
