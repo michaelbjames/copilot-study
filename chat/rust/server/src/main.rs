@@ -68,9 +68,7 @@ impl Client {
 
     fn do_dh_handshake(&mut self) {
         let (mut priv_key, pubkey) = self.crypto.generate_keys();
-        println!("Public Key: {}", &pubkey.to_hex());
         self.conn.write(&pubkey.to_vec()).unwrap();
-        println!("Server sent the public key!");
         let b_bytes = self.receive_message();
         let other_pub_key = self.crypto.deserialize(&b_bytes);
         self.crypto.handshake(&mut priv_key, other_pub_key);
@@ -123,9 +121,9 @@ impl Server {
                        });
                        
                        client.do_dh_handshake();
-                       //let encrypted = client.crypto.encrypt("sbarke".as_bytes());
-                       //let text = client.crypto.decrypt(&encrypted);
-                       //println!("{}", std::str::from_utf8(&text).unwrap().to_string());
+                       let encrypted = client.crypto.encrypt("sbarke".as_bytes());
+                       let text = client.crypto.decrypt(&encrypted);
+                       println!("{}", std::str::from_utf8(&text).unwrap().to_string());
 
                     },
                     Err(e) => {

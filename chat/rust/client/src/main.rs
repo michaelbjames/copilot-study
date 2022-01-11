@@ -29,7 +29,7 @@ impl Chat {
         match self.socket.read(&mut data) {
             Ok(_) => {
                 let text = String::from_utf8(data.to_vec());
-                println!("Client Received: {}", &text.unwrap());
+                //println!("Client Received: {}", &text.unwrap());
                 return data;
             },
             Err(e) => {
@@ -39,13 +39,11 @@ impl Chat {
         }
     }
     
-    pub fn receive(&mut self) -> [u8; 16] {
+    pub fn receive(&mut self) {
         let mut data = [0 as u8; 16]; // using 6 byte buffer
         match self.socket.read(&mut data) {
             Ok(_) => {
                 let message = self.crypto.decrypt(&data);
-                let text = std::str::from_utf8(&message).expect("Error decrypting message!");
-                println!("Client Received!: {}", &text.to_string());
                 let mut line = String::new();
                 match std::io::stdin().read_line(&mut line).unwrap() {
                     0 => assert!(true),
@@ -53,11 +51,9 @@ impl Chat {
                         self.send(line);
                     }
                 }
-                return data;
             },
             Err(e) => {
                 println!("Failed to receive data: {}", e);
-                return data;
             }
         }
     }
@@ -67,7 +63,6 @@ impl Chat {
         println!("Parsed from stdin {}", msg);
         let msg_bytes = msg.as_bytes();
         let encrypted_msg = self.crypto.encrypt(msg_bytes);
-        //println!("Client Sent: {}", &encrypted_msg.to_hex());
         self.socket.write(&encrypted_msg).unwrap();
         return;
     }
@@ -75,10 +70,8 @@ impl Chat {
     pub fn dh_handshake(&mut self){
         let ga_wire = self.receive_message();
         let ga = self.crypto.deserialize(&ga_wire);
-        println!("Received key: {}", &ga);
         let (mut priv_key, pubkey) = self.crypto.generate_keys();
         self.socket.write(&pubkey.to_vec()).unwrap();
-        println!("Client sent the public key!");
         self.crypto.handshake(&mut priv_key, ga);
     }
 
