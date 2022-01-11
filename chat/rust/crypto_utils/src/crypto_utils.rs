@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 pub use bp256::r1::BrainpoolP256r1;
 use json::JsonValue;
 use num::BigInt;
@@ -7,7 +9,8 @@ use openssl::symm::{Cipher, Crypter, Mode};
 use byteorder::WriteBytesExt;
 use byteorder::BigEndian;
 use num::ToPrimitive;
-
+extern crate rustc_serialize;
+//use rustc_serialize::json::{self, Json, ToJson};
 pub trait Crypto {
     fn new() -> Self;
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
@@ -27,6 +30,17 @@ pub struct PrimeDiffieHellman {
     g: usize,
     cipher: Cipher,
     key: Vec<u8>
+}
+pub struct KeyData {
+    key_val: u16
+}
+
+impl rustc_serialize::json::ToJson for KeyData {
+    fn to_json(&self) -> rustc_serialize::json::Json {
+        let mut d = BTreeMap::new();
+        d.insert("key_val".to_string(), self.key_val.to_json());
+        rustc_serialize::json::Json::Object(d)
+    }
 }
 
 impl Crypto for PrimeDiffieHellman {

@@ -23,6 +23,21 @@ impl Chat {
             crypto: crypto_utils::PrimeDiffieHellman::new()
         }
     }
+
+    pub fn receive_message(&mut self) -> [u8; 16] {
+        let mut data = [0 as u8; 16]; // using 16 byte buffer
+        match self.socket.read(&mut data) {
+            Ok(_) => {
+                let text = String::from_utf8(data.to_vec());
+                println!("Client Received: {}", &text.unwrap());
+                return data;
+            },
+            Err(e) => {
+                println!("Failed to receive data: {}", e);
+                return data;
+            }
+        }
+    }
     
     pub fn receive(&mut self) -> [u8; 16] {
         let mut data = [0 as u8; 16]; // using 6 byte buffer
@@ -58,11 +73,13 @@ impl Chat {
     }
 
     pub fn dh_handshake(&mut self){
-        let ga_wire = self.receive();
+        let ga_wire = self.receive_message();
         let ga = self.crypto.deserialize(&ga_wire);
+        println!("Received key: {}", &ga);
         let (mut priv_key, pubkey) = self.crypto.generate_keys();
+        self.socket.write(&pubkey.to_vec()).unwrap();
+        println!("Client sent the public key!");
         self.crypto.handshake(&mut priv_key, ga);
-        self.send(String::from_utf8(pubkey).unwrap());
     }
 
 }

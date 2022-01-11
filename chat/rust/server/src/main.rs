@@ -68,8 +68,9 @@ impl Client {
 
     fn do_dh_handshake(&mut self) {
         let (mut priv_key, pubkey) = self.crypto.generate_keys();
-        println!("Client Public Key: {}", &pubkey.to_hex());
-        self.send_message(String::from_utf8(pubkey).unwrap());
+        println!("Public Key: {}", &pubkey.to_hex());
+        self.conn.write(&pubkey.to_vec()).unwrap();
+        println!("Server sent the public key!");
         let b_bytes = self.receive_message();
         let other_pub_key = self.crypto.deserialize(&b_bytes);
         self.crypto.handshake(&mut priv_key, other_pub_key);
