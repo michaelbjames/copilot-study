@@ -43,7 +43,7 @@ impl Client {
         return text.to_string();
     }
 
-    pub fn send_message(&self, msg: String) {
+    pub fn send_message(&mut self, msg: String) {
         let msg_bytes = msg.as_bytes();
         let encrypted_msg = self.crypto.encrypt(msg_bytes);
         println!("Server Sent: {}", &encrypted_msg.to_hex());
@@ -67,11 +67,12 @@ impl Client {
     }
 
     fn do_dh_handshake(&mut self) {
-        let (pubkey, mut complete_handshake) = self.crypto.handshake();
+        let (mut priv_key, pubkey) = self.crypto.generate_keys();
+        println!("Client Public Key: {}", &pubkey.to_hex());
         self.send_message(String::from_utf8(pubkey).unwrap());
         let b_bytes = self.receive_message();
         let other_pub_key = self.crypto.deserialize(&b_bytes);
-        complete_handshake(other_pub_key);
+        self.crypto.handshake(&mut priv_key, other_pub_key);
     }
 }
 
@@ -113,11 +114,18 @@ impl Server {
                     Ok(stream) => {
                         let addr = stream.peer_addr().unwrap();
                         let mut client = Client::new(stream, addr);
+                       
                         thread::spawn(move || {
                             //connection succeeded
                             println!("Connection from {}", addr);
                            //self.handle_client(&mut client); //TODO
                        });
+                       
+                       client.do_dh_handshake();
+                       //let encrypted = client.crypto.encrypt("sbarke".as_bytes());
+                       //let text = client.crypto.decrypt(&encrypted);
+                       //println!("{}", std::str::from_utf8(&text).unwrap().to_string());
+
                     },
                     Err(e) => {
                         let _ = writeln!(std::io::stderr(), "Connection failed: {}", e);

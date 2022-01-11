@@ -29,8 +29,8 @@ impl Chat {
         match self.socket.read(&mut data) {
             Ok(_) => {
                 let message = self.crypto.decrypt(&data);
-                //let text = std::str::from_utf8(&message).expect("Error decrypting message!");
-                //println!("Client Received!: {}", &text.to_string());
+                let text = std::str::from_utf8(&message).expect("Error decrypting message!");
+                println!("Client Received!: {}", &text.to_string());
                 let mut line = String::new();
                 match std::io::stdin().read_line(&mut line).unwrap() {
                     0 => assert!(true),
@@ -60,8 +60,8 @@ impl Chat {
     pub fn dh_handshake(&mut self){
         let ga_wire = self.receive();
         let ga = self.crypto.deserialize(&ga_wire);
-        let (pubkey, mut complete_handshake) = self.crypto.handshake();
-        complete_handshake(ga);
+        let (mut priv_key, pubkey) = self.crypto.generate_keys();
+        self.crypto.handshake(&mut priv_key, ga);
         self.send(String::from_utf8(pubkey).unwrap());
     }
 
@@ -73,6 +73,7 @@ fn main() {
 
     let delay = Duration::from_millis(1000);
     loop {
+        client.dh_handshake();
         client.receive();
         thread::sleep(delay);
     }

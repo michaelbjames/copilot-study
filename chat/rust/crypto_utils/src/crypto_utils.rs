@@ -15,10 +15,11 @@ pub trait Crypto {
     fn gen_priv_key(&self) -> BigInt;
     fn gen_pub_key(&self, priv_key: &mut BigInt) -> BigInt;
     fn compute_shared_secret(&self, priv_key: &mut BigInt, other_pub_key: BigInt) -> BigInt;
-    fn handshake(&mut self) -> (Vec<u8>, Box<dyn FnMut(BigInt) + '_>);
+    fn handshake(&mut self, priv_key: &mut BigInt, other_pub_key: BigInt) -> ();
     fn serialize(&self, pub_key: &BigInt) -> Vec<u8>;
     fn deserialize(&self, pub_key: &[u8]) -> BigInt;
     fn init_key(&mut self, key: Vec<u8>) -> ();
+    fn generate_keys(&self) -> (BigInt, Vec<u8>);
 }
 
 pub struct PrimeDiffieHellman {
@@ -31,7 +32,7 @@ pub struct PrimeDiffieHellman {
 impl Crypto for PrimeDiffieHellman {
     fn new() -> PrimeDiffieHellman {
         PrimeDiffieHellman {
-            cipher: Cipher::aes_128_cbc(),
+            cipher: Cipher::aes_128_ecb(),
             key: vec![0; 16],
             p: 997,
             g: 2,
@@ -78,21 +79,22 @@ impl Crypto for PrimeDiffieHellman {
         }
     }
 
-    fn handshake(&mut self) -> (Vec<u8>, Box<dyn FnMut(BigInt) + '_>) {
+    fn generate_keys(&self) -> (BigInt, Vec<u8>) {
         let mut priv_key = self.gen_priv_key();
         let pub_key = self.gen_pub_key(&mut priv_key);
-        let complete_handshake = move |other_pub_key| {
-            let shared_secret = self.compute_shared_secret(&mut priv_key, other_pub_key);
-            let mut wtr = Vec::new();
+        let pubkey_bytes = self.serialize(&pub_key);
+        return (priv_key, pubkey_bytes);
+    }
+
+    fn handshake(&mut self, priv_key: &mut BigInt, other_pub_key: BigInt) {
+        let shared_secret = self.compute_shared_secret(priv_key, other_pub_key);
+        let mut wtr = Vec::new();
             wtr.write_u16::<BigEndian>(ToPrimitive::to_u16(&shared_secret).unwrap()).unwrap();
             while wtr.len() != 16 {
                 wtr.push(0);
             }
-            self.init_key(wtr[..].to_vec());
-            return;
-        };
-        let pubkey_bytes = Vec::new(); //self.serialize(&pub_key);
-        return (pubkey_bytes, Box::new(complete_handshake));
+        self.init_key(wtr[..].to_vec());
+        return;
     }
 
     fn init_key(&mut self, key: Vec<u8>) {
@@ -101,8 +103,7 @@ impl Crypto for PrimeDiffieHellman {
 
     fn serialize(&self, pub_key: &BigInt) -> Vec<u8> {
         let mut key_data = json::JsonValue::new_object();
-        key_data["type"] = "PrimeDiffieHellman".into();
-        key_data["key_value"] = ToPrimitive::to_u16(pub_key).unwrap().into();
+        key_data["key_val"] = ToPrimitive::to_u16(pub_key).unwrap().into();
         let key_json_str = key_data.dump();
         return key_json_str.as_bytes().to_vec();
     }
@@ -110,10 +111,7 @@ impl Crypto for PrimeDiffieHellman {
     fn deserialize(&self, pub_key: &[u8]) -> BigInt {
         let key_json_str = String::from_utf8(pub_key.to_vec()).unwrap();
         let key_data: JsonValue = json::parse(&key_json_str).unwrap();
-        let key_value = key_data["key_value"].as_u16().unwrap();
-        if key_data["type"].as_str().unwrap() != "PrimeDiffieHellman" {
-            panic!("Invalid key type");
-        }
+        let key_value = key_data["key_val"].as_u16().unwrap();
         return BigInt::from(key_value);
     }
 }
