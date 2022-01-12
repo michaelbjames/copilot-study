@@ -143,7 +143,24 @@ Import any packages you need. Remember, the cryptographic module provides the
 interfaces and implementations you'll need for the crypto part.
 
 ## Task 3 Implement the Server
-The business logic of the server is missing. You'll need to implement it.
-The server should be able to talk to many clients at once, and share messages
-between them all. It should ensure that no two clients can have the same
-username.
+You need to implement the server. It should be listening for connections on port
+4040 over TCP. Any connection it makes, it should perform a handshake; ask for a
+unique username; and then send a welcome message to all connected clients. Any
+message sent to the server should be sent to all the other clients.
+
+The server should support the following commands:
+- /quit: disconnects the client (same as ctrl-d or EOF)
+- /list: list all connected clients (this message is only sent to the asking client)
+- /help: show this list
+
+As an example exchange:
+Server: listening...
+Client 1: <connects>
+Server: <handshake: sends its public-key>
+Client 1: <handshake: sends its public-key>
+Server(encrypted to Client 1): Please pick a username:
+Client 1: MySuperCoolUsername
+Server(to all): Welcome MySuperCoolUsername!
+Client 2: <connects; handshakes; picks username>
+Client 1: Hello!
+Server(to all but Client 1): MySuperCoolUsername: Hello!

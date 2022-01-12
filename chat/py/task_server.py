@@ -53,14 +53,6 @@ class Server(object):
             print("Could not create socket: {}".format(e))
             sys.exit(1)
 
-    def run(self):
-        # TODO: implement run
-        pass
-
-    def negotiate_username(self, client):
-        # TODO: negotiate username
-        pass
-
     def close_connection(self, client):
         print("Connection closed from {}".format(client.addr))
         client.conn.close()
@@ -68,17 +60,6 @@ class Server(object):
             self.username_list.remove(client.username)
         del self.clients[client.addr]
 
-    def send_all(self, msg):
-        for client_addr, client_data in self.clients.items():
-            client_data["client"].send_message(msg)
-
-    def handle_client(self, client):
-        # TODO: onboard a client
-        pass
-
-    def handle_msg(self, client, msg):
-        # TODO: Handle messages
-        pass
 
 
 if __name__ == '__main__':
