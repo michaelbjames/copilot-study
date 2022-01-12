@@ -13,7 +13,7 @@ MESSAGE_SIZE_BYTES = 2048
 class Chat(object):
     def __init__(self, sock):
         self.sock = sock
-        self.crypto = crypto.ECDiffieHellman()
+        self.crypto = crypto.ModOneDiffieHellman()
 
     def start(self):
         self.dh_handshake()
@@ -68,9 +68,8 @@ class Chat(object):
         Output must be 32 bytes long. (for a 256-bit AES key)
         """
         ga_wire = self.sock.recv(MESSAGE_SIZE_BYTES)
-        ga = self.crypto.deserialize_key(ga_wire)
         pubkey, complete_handshake = self.crypto.handshake()
-        complete_handshake(ga)
+        complete_handshake(ga_wire)
         self.sock.send(pubkey)
 
 

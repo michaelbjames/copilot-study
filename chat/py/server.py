@@ -18,14 +18,13 @@ class Client(object):
         self.conn = conn
         self.addr = addr
         self.username = None
-        self.crypto = crypto.ECDiffieHellman()
+        self.crypto = crypto.ModOneDiffieHellman()
 
     def do_dh_handshake(self):
         pubkey, complete_handshake = self.crypto.handshake()
         self.conn.send(pubkey)
         b_bytes = self.conn.recv(MESSAGE_SIZE_BYTES)
-        other_pub_key = self.crypto.deserialize_key(b_bytes)
-        complete_handshake(other_pub_key)
+        complete_handshake(b_bytes)
 
     def send_message(self, msg:str):
         msg_bytes = msg.encode()
