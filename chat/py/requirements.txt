@@ -1,2 +1,1 @@
 pycryptodome==3.12.0
-tinyec==0.4.0

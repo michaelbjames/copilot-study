@@ -13,7 +13,7 @@ MESSAGE_SIZE_BYTES = 2048
 class Chat(object):
     def __init__(self, sock):
         self.sock = sock
-        self.crypto = crypto.ECDiffieHellman()
+        self.crypto = crypto.PrimeDiffieHellman()
 
     def start(self):
         self.dh_handshake()

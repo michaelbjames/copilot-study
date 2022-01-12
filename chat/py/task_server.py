@@ -17,7 +17,7 @@ class Client(object):
         self.conn = conn
         self.addr = addr
         self.username = None
-        self.crypto = crypto.ECDiffieHellman()
+        self.crypto = crypto.PrimeDiffieHellman()
 
     def do_dh_handshake(self):
         pubkey, complete_handshake = self.crypto.handshake()
