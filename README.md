@@ -21,6 +21,14 @@ This project will be a set of tasks to accomplish with copilot.
     rust/ <- rust implementation
 ```
 
+# Before you begin
+You'll need:
+- VSCode
+- the Copilot plugin for VSCode
+- If doing python:
+  - pip3
+  - run `chat/py$ pip3 install -r requirements.txt`
+
 # Chat Server
 MyRC is a secure chat client and server. Messages are encrypted and sent to all
 connected clients. Clients pick a username by which they are identified. There
@@ -50,8 +58,6 @@ Client -> Server:
 
 The client and server each can take the other's public key, along with their own
 private key, and generate a shared secret key.
-Note: this is with the PrimeDiffieHellman algorithm, you'll implement both this
-and the ECDiffieHellman algorithm.
 
 ## AES Cipher
 This shared key is used as the key for an AES-256-ECB cipher.
@@ -109,25 +115,6 @@ Bob:
 
 3. Alice: generate shared secret as (pub_b^priv_a) mod p
 3. Bob: generate shared secret as (pub_a^priv_b) mod p
-
-### ECDiffieHellman
-Create an implementation of this crypto class.
-It uses an elliptic curve to do a diffie-hellman key exchange.
-A Point on a Curve has two values: x and y.
-A Curve forms a field of points, which for our purposes means it's
-closed under multiplication, and the same above logic holds (although with a
-different operator instead of exponentiation).
-This process works as follows:
-Alice and Bob agree on a particular curve to use, "brainpoolP160r1"
-This curve has a generator point, g, and a prime, p.
-
-Alice's private key is a random number between 1 and the order of the field: `curve.field.n`
-Alice computes her public key, which is the generator point on the curve
-*multiplied* by her private key. The `tinyec` library will do the actual
-elliptic curve math. The entire Point (x-y coords) is the public key.
-When Alice gets Bob's public key, she can compute the shared secret.
-Alice computes the shared secret Point as the product of her private key
-and Bob's public key. The secret _value_ is the x-coordinate of that new point.
 
 ## Task 2: Implement the Client
 You have only the main function from the client and need to implement the rest.
