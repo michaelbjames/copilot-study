@@ -68,8 +68,8 @@ class Chat(object):
         Output must be 32 bytes long. (for a 256-bit AES key)
         """
         ga_repr = self.sock.recv(MESSAGE_SIZE_BYTES)
-        pubkey = self.crypto.handshake_part1()
-        self.crypto.handshake_part2(ga_repr)
+        pubkey = self.crypto.init_keys()
+        self.crypto.handshake(ga_repr)
         self.sock.send(pubkey)
 
 

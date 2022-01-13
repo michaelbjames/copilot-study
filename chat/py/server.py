@@ -22,10 +22,10 @@ class Client(object):
 
     def do_dh_handshake(self):
         try:
-            pubkey = self.crypto.handshake_part1()
+            pubkey = self.crypto.init_keys()
             self.conn.send(pubkey)
             b_repr = self.conn.recv(MESSAGE_SIZE_BYTES)
-            self.crypto.handshake_part2(b_repr)
+            self.crypto.handshake(b_repr)
         except ValueError as e:
             print("Error in DH handshake: {}".format(e))
             self.conn.close()

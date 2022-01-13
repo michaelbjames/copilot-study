@@ -56,10 +56,10 @@ ctrl-c or ctrl-d).
 The crypto library encapsulates all the math needed to encrypt, decrypt, and
 perform the handshake. It provides 4 functions:
 
-- `handshake_part1`: The handshake to establish a shared secret is a 2 part
-  procedure. This first part generates a public and a private key. It returns
-  the public key and stores the private key.
-- `handshake_part2`: This second part takes a public key (from the other party).
+- `init_keys`: The first of a 2 part
+  procedure is to generate the public and private keys. This function produces a
+  tuple of a public key and a private key.
+- `handshake`: This second part takes a public key (from the other party).
   It combines this public key with the private key generated (and internally
   stored) from the first part. It computes a shared secret and uses it to
   initialize the cipher used to `encrypt` and `decrypt` messages. You do not
@@ -68,7 +68,7 @@ perform the handshake. It provides 4 functions:
 - `encrypt`: This function takes a message as bytes and encrypts it. The
   function returns a ciphertext as bytes.
 - `decrypt`: This function takes a ciphertext as bytes and returns a message as
-  bytes. It can only be called after `handshake_part1` and `handshake_part2`
+  bytes. It can only be called after `init_keys` and `handshake`
   have been called.
 
 ## Commands

@@ -41,7 +41,7 @@ class Crypto(object):
             return None
         return Padding.unpad(padded, AES.block_size)
 
-    def handshake_part1(self) -> bytes:
+    def init_keys(self) -> bytes:
         """
         Facilitate a cryptographic handshake between two parties.
         This will generate the private key and the public key.
@@ -49,7 +49,7 @@ class Crypto(object):
         you are given the public key, in a format you can
         readily send to the other party.
 
-        You must call handshake_part2() with information the
+        You must call handshake() with information the
         other party gives you.
         """
         self.priv_key = self._gen_priv_key()
@@ -57,7 +57,7 @@ class Crypto(object):
         pubkey_repr = Crypto._serialize_key(pub_key)
         return pubkey_repr
 
-    def handshake_part2(self, other_pub_key_repr:bytes) -> None:
+    def handshake(self, other_pub_key_repr:bytes) -> None:
         other_pub_key = Crypto._deserialize_key(other_pub_key_repr)
         shared_secret = self._compute_shared_secret(self.priv_key, other_pub_key)
         self.aes_secret = shared_secret.to_bytes(DH_MESSAGE_SIZE_BYTES, byteorder=BYTE_ORDER)
