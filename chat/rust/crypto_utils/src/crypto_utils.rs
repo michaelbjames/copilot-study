@@ -1,6 +1,6 @@
-use num::{BigUint};
-use rand::Rng;
+use num::BigUint;
 use openssl::symm::{Cipher, Crypter, Mode};
+use rand::Rng;
 
 pub trait Crypto {
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
@@ -16,7 +16,7 @@ pub struct PrimeDiffieHellman {
     p: usize,
     g: usize,
     cipher: Cipher,
-    key: Vec<u8>
+    key: Vec<u8>,
 }
 
 impl PrimeDiffieHellman {
@@ -39,7 +39,6 @@ impl PrimeDiffieHellman {
         BigUint::from(self.g).modpow(priv_key, &self.p.into())
     }
 
-
     fn compute_shared_secret(&self, priv_key: &BigUint, other_pub_key: &BigUint) -> BigUint {
         other_pub_key.modpow(priv_key, &BigUint::from(self.p))
     }
@@ -52,15 +51,14 @@ impl Default for PrimeDiffieHellman {
 }
 
 impl Crypto for PrimeDiffieHellman {
-
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
         let mut ciphertext = vec![0; plaintext.len() + self.cipher.block_size()];
         let mut crypter = Crypter::new(self.cipher, Mode::Encrypt, &self.key, None).unwrap();
         crypter.pad(true);
-    
+
         let count = crypter.update(plaintext, &mut ciphertext).unwrap();
         let rest = crypter.finalize(&mut ciphertext[count..]).unwrap();
-    
+
         ciphertext.truncate(count + rest);
         ciphertext
     }
@@ -68,15 +66,14 @@ impl Crypto for PrimeDiffieHellman {
     fn decrypt(&self, data: &[u8]) -> Vec<u8> {
         let mut decrypted = Crypter::new(self.cipher, Mode::Decrypt, &self.key, None).unwrap();
         let mut output = vec![0_u8; data.len() + self.cipher.block_size()];
-    
+
         let decrypted_result = decrypted.update(data, &mut output);
-    
+
         match decrypted_result {
             Ok(_) => output,
             Err(e) => panic!("Error decrypting text: {}", e),
         }
     }
-
 
     fn handshake(&mut self, priv_key: &BigUint, other_pub_key: &BigUint) {
         let shared_secret = self.compute_shared_secret(priv_key, other_pub_key);
