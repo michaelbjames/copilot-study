@@ -46,7 +46,7 @@ impl Client {
     pub fn send_message(&mut self, msg: String) {
         let msg_bytes = msg.as_bytes();
         let encrypted_msg = self.crypto.encrypt(msg_bytes);
-        println!("Server Sent: {}", &encrypted_msg.to_hex());
+        println!("Server Sent: {}", &msg);
         self.conn.write(&encrypted_msg).unwrap();
         return;
     }
@@ -55,8 +55,6 @@ impl Client {
         let mut data = [0 as u8; 16]; // using 16 byte buffer
         match self.conn.read(&mut data) {
             Ok(_) => {
-                //let text = String::from_utf8(data.to_vec());
-                //println!("Server Received: {}", &text.unwrap());
                 return data;
             },
             Err(e) => {
@@ -72,9 +70,9 @@ impl Client {
         let b_bytes = self.receive_message();
         let other_pub_key = self.crypto.deserialize(&b_bytes);
         self.crypto.handshake(&mut priv_key, other_pub_key);
+        println!("Handshake complete!");
     }
 }
-
 pub struct Server {
     socket: TcpListener,
     clients: HashMap<SocketAddr, Client>,
@@ -108,6 +106,7 @@ impl Server {
             // Select between existing sockets and handle that socket.
             // if it is a new socket, do the handshake, negotiate username,
             // and add it to the list of connections.
+
             for stream in self.socket.incoming() {
                 match stream {
                     Ok(stream) => {
@@ -117,14 +116,10 @@ impl Server {
                         thread::spawn(move || {
                             //connection succeeded
                             println!("Connection from {}", addr);
-                           //self.handle_client(&mut client); //TODO
+                            self.handle_client(&mut client); //TODO
                        });
                        
                        client.do_dh_handshake();
-                       let encrypted = client.crypto.encrypt("sbarke".as_bytes());
-                       let text = client.crypto.decrypt(&encrypted);
-                       println!("{}", std::str::from_utf8(&text).unwrap().to_string());
-
                     },
                     Err(e) => {
                         let _ = writeln!(std::io::stderr(), "Connection failed: {}", e);
@@ -134,21 +129,21 @@ impl Server {
         }
     }
 
-    pub fn negotiate_username(&mut self, client: &mut Client) -> Option<String> {
+    pub fn negotiate_username(&self, client: &mut Client) -> Option<String> {
         client.send_message( "Enter username: {}".to_string());
         let username = &client.receive_message();
-        //let mut username = Client::decrypt_msg(client.conn.read(&[u8]).unwrap());
+        let username = client.decrypt_msg(username);
         if username.is_empty() {
             return None;
         }
-        let username_trimmed = username.to_hex().trim().to_string(); // TODO: remove to_hex
+
+        let username_trimmed = username.trim().to_string();
         if self.username_list.contains(&username_trimmed) {
-            client.send_message("Username already taken!".to_string());
+            //client.send_message("Username taken!".to_string());
             self.negotiate_username(client);
 
         } else {
             client.username = Some(username_trimmed.clone());
-            self.username_list.insert(username_trimmed.clone());
         }
         return Some(username_trimmed);
     }
@@ -159,11 +154,21 @@ impl Server {
         // 2. Receive a username.
         let username = self.negotiate_username(client);
         // 3. Check if username is available.
-        if username.unwrap().is_empty() {
+        if username == None {
             self.close_connection(client);
             return;
         }
-        //TODO
+        self.username_list.insert(username.unwrap().trim().to_string());
+        // TODO: Send username to all clients
+        loop {
+            let got = client.receive_message();
+            let message = client.decrypt_msg(&got);
+            if message.is_empty() {
+                self.close_connection(client);
+                return;
+            }
+        }
+
     }
 
     pub fn close_connection(&mut self, client: &mut Client) {
