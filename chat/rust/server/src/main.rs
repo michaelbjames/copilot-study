@@ -1,17 +1,17 @@
-use std::net::{TcpListener, TcpStream, SocketAddr};
-use std::io::{Write};
-use std::collections::HashMap; 
-use std::collections::HashSet; 
 pub use bp256::r1::BrainpoolP256r1;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::io::Write;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 extern crate crypto_utils;
 extern crate openssl;
-extern crate rustc_serialize;
 extern crate rand;
+extern crate rustc_serialize;
 use crypto_utils::Crypto;
 use num::BigInt;
 use rustc_serialize::hex::ToHex;
-use std::thread;
 use std::io::*;
+use std::thread;
 
 const LOCAL: &str = "127.0.0.1:6000";
 
@@ -19,7 +19,7 @@ pub struct Client {
     conn: TcpStream,
     addr: SocketAddr,
     username: Option<String>,
-    crypto: crypto_utils::PrimeDiffieHellman
+    crypto: crypto_utils::PrimeDiffieHellman,
 }
 
 impl Client {
@@ -32,7 +32,7 @@ impl Client {
             conn,
             addr,
             username,
-            crypto
+            crypto,
         }
     }
 
@@ -50,13 +50,13 @@ impl Client {
         self.conn.write(&encrypted_msg).unwrap();
         return;
     }
-    
+
     pub fn receive_message(&mut self) -> [u8; 16] {
         let mut data = [0 as u8; 16]; // using 16 byte buffer
         match self.conn.read(&mut data) {
             Ok(_) => {
                 return data;
-            },
+            }
             Err(e) => {
                 println!("Failed to receive data: {}", e);
                 return data;
@@ -78,8 +78,8 @@ pub struct Server {
     clients: HashMap<SocketAddr, Client>,
     username_list: HashSet<String>,
 }
-fn main() {   
-    //Testing 
+fn main() {
+    //Testing
     let mut server = Server::new();
     server.run();
 }
@@ -87,16 +87,16 @@ fn main() {
 impl Server {
     pub fn new() -> Server {
         // Start a TCP listener.
-	    let socket = match TcpListener::bind(LOCAL) {
-		    Ok(socket) => socket,
-		    Err(e) => panic!("could not read start TCP listener: {}", e)
-	    };
+        let socket = match TcpListener::bind(LOCAL) {
+            Ok(socket) => socket,
+            Err(e) => panic!("could not read start TCP listener: {}", e),
+        };
         let clients = HashMap::new();
         let username_list = HashSet::new();
         Server {
             socket,
             clients,
-            username_list
+            username_list,
         }
     }
 
@@ -112,15 +112,15 @@ impl Server {
                     Ok(stream) => {
                         let addr = stream.peer_addr().unwrap();
                         let mut client = Client::new(stream, addr);
-                       
+
                         thread::spawn(move || {
                             //connection succeeded
                             println!("Connection from {}", addr);
                             self.handle_client(&mut client); //TODO
-                       });
-                       
-                       client.do_dh_handshake();
-                    },
+                        });
+
+                        client.do_dh_handshake();
+                    }
                     Err(e) => {
                         let _ = writeln!(std::io::stderr(), "Connection failed: {}", e);
                     }
@@ -130,7 +130,7 @@ impl Server {
     }
 
     pub fn negotiate_username(&self, client: &mut Client) -> Option<String> {
-        client.send_message( "Enter username: {}".to_string());
+        client.send_message("Enter username: {}".to_string());
         let username = &client.receive_message();
         let username = client.decrypt_msg(username);
         if username.is_empty() {
@@ -141,7 +141,6 @@ impl Server {
         if self.username_list.contains(&username_trimmed) {
             //client.send_message("Username taken!".to_string());
             self.negotiate_username(client);
-
         } else {
             client.username = Some(username_trimmed.clone());
         }
@@ -158,7 +157,8 @@ impl Server {
             self.close_connection(client);
             return;
         }
-        self.username_list.insert(username.unwrap().trim().to_string());
+        self.username_list
+            .insert(username.unwrap().trim().to_string());
         // TODO: Send username to all clients
         loop {
             let got = client.receive_message();
@@ -168,18 +168,20 @@ impl Server {
                 return;
             }
         }
-
     }
 
     pub fn close_connection(&mut self, client: &mut Client) {
         println!("Closing connection {}", client.addr);
         match client.conn.shutdown(std::net::Shutdown::Both) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => {
                 println!("Failed to close connection: {}", e);
             }
         }
-        if self.username_list.contains(client.username.as_ref().unwrap()) {
+        if self
+            .username_list
+            .contains(client.username.as_ref().unwrap())
+        {
             self.username_list.remove(client.username.as_ref().unwrap());
         }
         self.clients.remove(&client.addr);
@@ -188,21 +190,21 @@ impl Server {
     pub fn handle_msg(&mut self, client: &mut Client, msg: String) {
         if msg.len() == 0 {
             return;
-        } else if msg.starts_with('/'){
+        } else if msg.starts_with('/') {
             let msg = msg.trim();
             if msg == "/quit" {
                 self.close_connection(client);
                 return;
             } else if msg == "/list" {
-                client.send_message(
-                    format!("Invalid command. Type /help for help.\n"));
+                client.send_message(format!("Invalid command. Type /help for help.\n"));
                 return;
             } else if msg == "/help" {
                 client.send_message(
                     "
                     /quit - quit the chat
                     /list - list usernames
-                    /help - show this help message".to_string()
+                    /help - show this help message"
+                        .to_string(),
                 );
                 return;
             } else {
@@ -210,10 +212,10 @@ impl Server {
             }
         } else {
             for (client_addr, _) in self.clients.iter() {
-              if client_addr != &client.addr {
+                if client_addr != &client.addr {
                     client.send_message(format!("{}: {}", client.username.as_ref().unwrap(), msg));
                 }
-            }    
+            }
         }
-    }   
+    }
 }
