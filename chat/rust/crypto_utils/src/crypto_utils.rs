@@ -3,12 +3,8 @@ use rand::Rng;
 use openssl::symm::{Cipher, Crypter, Mode};
 
 pub trait Crypto {
-    fn new() -> Self;
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
-    fn gen_priv_key(&self) -> BigUint;
-    fn gen_pub_key(&self, priv_key: &BigUint) -> BigUint;
-    fn compute_shared_secret(&self, priv_key: &BigUint, other_pub_key: &BigUint) -> BigUint;
     fn handshake(&mut self, priv_key: &BigUint, other_pub_key: &BigUint);
     fn serialize(&self, pub_key: &BigUint) -> Vec<u8>;
     fn deserialize(&self, pub_key: &[u8]) -> BigUint;
@@ -23,8 +19,8 @@ pub struct PrimeDiffieHellman {
     key: Vec<u8>
 }
 
-impl Crypto for PrimeDiffieHellman {
-    fn new() -> PrimeDiffieHellman {
+impl PrimeDiffieHellman {
+    pub fn new() -> PrimeDiffieHellman {
         PrimeDiffieHellman {
             cipher: Cipher::aes_128_ecb(),
             key: vec![0; 16],
@@ -32,6 +28,30 @@ impl Crypto for PrimeDiffieHellman {
             g: 2,
         }
     }
+
+    fn gen_priv_key(&self) -> BigUint {
+        let mut rng = rand::thread_rng();
+        let priv_key = rng.gen_range(1..(self.p - 1));
+        BigUint::from(priv_key)
+    }
+
+    fn gen_pub_key(&self, priv_key: &BigUint) -> BigUint {
+        BigUint::from(self.g).modpow(priv_key, &self.p.into())
+    }
+
+
+    fn compute_shared_secret(&self, priv_key: &BigUint, other_pub_key: &BigUint) -> BigUint {
+        other_pub_key.modpow(priv_key, &BigUint::from(self.p))
+    }
+}
+
+impl Default for PrimeDiffieHellman {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Crypto for PrimeDiffieHellman {
 
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
         let mut ciphertext = vec![0; plaintext.len() + self.cipher.block_size()];
@@ -57,19 +77,6 @@ impl Crypto for PrimeDiffieHellman {
         }
     }
 
-    fn gen_priv_key(&self) -> BigUint {
-        let mut rng = rand::thread_rng();
-        let priv_key = rng.gen_range(1..(self.p - 1));
-        BigUint::from(priv_key)
-    }
-
-    fn gen_pub_key(&self, priv_key: &BigUint) -> BigUint {
-        BigUint::from(self.g).modpow(priv_key, &self.p.into())
-    }
-
-    fn compute_shared_secret(&self, priv_key: &BigUint, other_pub_key: &BigUint) -> BigUint {
-        other_pub_key.modpow(priv_key, &BigUint::from(self.p))
-    }
 
     fn handshake(&mut self, priv_key: &BigUint, other_pub_key: &BigUint) {
         let shared_secret = self.compute_shared_secret(priv_key, other_pub_key);
