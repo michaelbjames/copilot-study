@@ -21,6 +21,14 @@ This project will be a set of tasks to accomplish with copilot.
     rust/ <- rust implementation
 ```
 
+# Before you begin
+You'll need:
+- VSCode
+- the Copilot plugin for VSCode
+- If doing python:
+  - pip3
+  - run `chat/py$ pip3 install -r requirements.txt`
+
 # Chat Server
 MyRC is a secure chat client and server. Messages are encrypted and sent to all
 connected clients. Clients pick a username by which they are identified. There
@@ -28,6 +36,7 @@ is only one big room for all clients. All clients should have unique usernames.
 
 ## Protocol
 The server's protocol is simple:
+0. Client connects to server. A TCP connection on port 4040 is default.
 1. Client and server perform a handshake to establish a shared secret key.
 2. Server asks for a username
 3. Client gives a username
@@ -49,8 +58,6 @@ Client -> Server:
 
 The client and server each can take the other's public key, along with their own
 private key, and generate a shared secret key.
-Note: this is with the PrimeDiffieHellman algorithm, you'll implement both this
-and the ECDiffieHellman algorithm.
 
 ## AES Cipher
 This shared key is used as the key for an AES-256-ECB cipher.
@@ -82,10 +89,14 @@ While implementing these tasks, you're welcome to (but not required to):
   solution server)
 
 Please DON'T:
-- read the solution code
+- read the solution code. It's in the same directory as your tasks so you can
+  test against them, and use the solutions in your imports.
 
 ## Task 1 Implement DiffieHellman Key Exchange, 2 ways
 The crypto library needs to be implemented.
+The superclass `Crypto` uses stubs and relies on its subclasses to actually
+implement the unimplemented methods. You do not need to change anything in the
+`Crypto` class itself.
 ### PrimeDiffieHellman
 Create an implementation of this crypto class
 using the traditional diffie-hellman key exchange protocol,
@@ -105,24 +116,6 @@ Bob:
 3. Alice: generate shared secret as (pub_b^priv_a) mod p
 3. Bob: generate shared secret as (pub_a^priv_b) mod p
 
-### ECDiffieHellman
-Create an implementation of this crypto class.
-It uses an elliptic curve to do a diffie-hellman key exchange.
-A Point on a Curve has two values: x and y.
-A Curve forms a field of points, which for our purposes means it's
-closed under multiplication.
-This process works as follows:
-Alice and Bob agree on a particular curve to use, "brainpoolP160r1"
-This curve has a generator point, g, and a prime, p.
-
-Alice's private key is a random number between 1 and the order of the field; curve.field.n
-Alice computes her public key, which is the generator point on the curve
-multiplied by her private key. The tinyec library will do the actual
-elliptic curve math. The entire Point (x-y coords) is the public key.
-When Alice gets Bob's public key, she can compute the shared secret.
-Alice computes the shared secret Point as the product of her private key
-and Bob's public key. The secret _value_ is the x-coordinate of that point.
-
 ## Task 2: Implement the Client
 You have only the main function from the client and need to implement the rest.
 You know the client needs to take an IP and a port number, and that it uses TCP.
@@ -134,10 +127,27 @@ console. Content from the server is put on screen and messages from the console
 are sent to the server.
 
 Import any packages you need. Remember, the cryptographic module provides the
-interfaces and implementations you'll need for that part.
+interfaces and implementations you'll need for the crypto part.
 
 ## Task 3 Implement the Server
-The business logic of the server is missing. You'll need to implement it.
-The server should be able to talk to many clients at once, and share messages
-between them all. It should ensure that no two clients can have the same
-username.
+You need to implement the server. It should be listening for connections on port
+4040 over TCP. Any connection it makes, it should perform a handshake; ask for a
+unique username; and then send a welcome message to all connected clients. Any
+message sent to the server should be sent to all the other clients.
+
+The server should support the following commands:
+- /quit: disconnects the client (same as ctrl-d or EOF)
+- /list: list all connected clients (this message is only sent to the asking client)
+- /help: show this list
+
+As an example exchange:
+Server: listening...
+Client 1: <connects>
+Server: <handshake: sends its public-key>
+Client 1: <handshake: sends its public-key>
+Server(encrypted to Client 1): Please pick a username:
+Client 1: MySuperCoolUsername
+Server(to all): Welcome MySuperCoolUsername!
+Client 2: <connects; handshakes; picks username>
+Client 1: Hello!
+Server(to all but Client 1): MySuperCoolUsername: Hello!

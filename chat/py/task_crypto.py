@@ -2,8 +2,6 @@
 
 from Crypto.Cipher import AES
 from Crypto.Util import Padding
-from tinyec import registry
-from tinyec import ec
 import random
 import json
 import math
@@ -118,5 +116,3 @@ class PrimeDiffieHellman(Crypto):
     pass
 
 
-class ECDiffieHellman(Crypto):
-    pass

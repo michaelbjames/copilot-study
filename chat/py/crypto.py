@@ -4,8 +4,6 @@
 from sys import byteorder
 from Crypto.Cipher import AES
 from Crypto.Util import Padding
-from tinyec import registry
-from tinyec import ec
 import random
 import json
 import math
@@ -136,35 +134,3 @@ class PrimeDiffieHellman(Crypto):
 
     def _compute_shared_secret(self, priv_key, other_pub_key):
         return (other_pub_key ** priv_key) % self.p
-
-class ECDiffieHellman(Crypto):
-    curve = registry.get_curve("brainpoolP160r1")
-    key_size = math.ceil(math.log2(curve.g.p))
-    def __init__(self):
-        super().__init__()
-        self.generator = None
-        self.secret = None
-
-    @classmethod
-    def _serialize_key_obj(cls, key):
-        return {
-            "x": key.x,
-            "y": key.y,
-        }
-
-    @classmethod
-    def _deserialize_key_obj(cls, key):
-        return ec.Point(cls.curve, key["x"], key["y"])
-
-    def _gen_priv_key(self):
-        return random.randint(1, self.curve.field.n - 1)
-
-    def _mk_pub_key(self, priv_key):
-        return self.curve.g * priv_key
-
-    def _compute_shared_secret(self, priv_key, other_pub_key):
-        # Combine the two keys, and truncate to the AES key size
-        point_sum = other_pub_key * priv_key
-        secret = point_sum.x
-        return secret
-
