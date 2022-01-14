@@ -89,7 +89,7 @@ The `Crypto` class encapsulates all the encryption functionality. It provides 4 
   to communicate securely with the party whose public key was used in this step.
 - `encrypt`: This method takes a message as a bytestring and encrypts it. 
   It returns a ciphertext as a bytestring.
-- `decrypt`: This function takes a ciphertext as a bytestring 
+- `decrypt`: This method takes a ciphertext as a bytestring 
   and returns a message as a bytestring.
 
 ## Running the application
