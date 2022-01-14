@@ -76,7 +76,7 @@ impl Chat {
         let ga = self.crypto.deserialize(&ga_wire);
         let (mut priv_key, pubkey) = self.crypto.generate_keys();
         self.socket.write(&pubkey.to_vec()).unwrap();
-        self.crypto.handshake(&mut priv_key, ga);
+        self.crypto.handshake(&mut priv_key, &ga);
         println!("Handshake complete!");
     }
 }

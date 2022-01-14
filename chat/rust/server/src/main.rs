@@ -69,7 +69,7 @@ impl Client {
         self.conn.write(&pubkey.to_vec()).unwrap();
         let b_bytes = self.receive_message();
         let other_pub_key = self.crypto.deserialize(&b_bytes);
-        self.crypto.handshake(&mut priv_key, other_pub_key);
+        self.crypto.handshake(&mut priv_key, &other_pub_key);
         println!("Handshake complete!");
     }
 }
@@ -116,7 +116,7 @@ impl Server {
                         thread::spawn(move || {
                             //connection succeeded
                             println!("Connection from {}", addr);
-                            self.handle_client(&mut client); //TODO
+                            //self.handle_client(&mut client); //TODO
                         });
 
                         client.do_dh_handshake();
