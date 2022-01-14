@@ -1,11 +1,10 @@
 # copilot-study
 Thanks for taking part in this study!
 We want to understand how people interact with Copilot.
-- When do you use Copilot?
-- Do you trust its output?
-  - If not, what would make you more confident?
-- Do you plan your input or let it just work in the background?
-- How confident are you about what you get back?
+- What kind of tasks do you use Copilot for?
+- Do you actively provide input to Copilot or let it just work in the background?
+- How confident are you about what you get back? How do you increase your confidence?
+- What are the main pain points you would like to see improved in the future?
 
 To get at these kinds of questions *and more* we've created a small application,
 YOU'RE going to build (with Copilot's help).
@@ -30,46 +29,50 @@ You'll need:
   - run `chat/py$ pip3 install -r requirements.txt`
 
 # Chat Server
-MyRC is a secure chat client and server. Messages are encrypted and sent to all
-connected clients. Clients pick a username by which they are identified. There
-is only one big room for all clients. All clients should have unique usernames.
+
+MyRC is a secure chat client and server.
+Multiple clients connect to a single server.
+When a client sends a chat message,
+it is broadcast to all other connected clients
+(that is, there is a single chat room for everyone).
+Each client picks a username, which must be unique.
+All messages are encrypted.
 
 ## Protocol
-The server's protocol is simple:
 
 1. Client connects to server (localhost:4040)
 2. Server sends its public key to the client
 3. Client sends its public key to the server
 
-<at this point, all comunication is encrypted with a shared secret>
+At this point, a *shared secret* is generated, and all comunication henceforth is encrypted with that secret.
 
 3. Server asks for a username
 4. Client gives a username
 5. Server sends a welcome message to all connected clients.
 
-Messaging now commences at this point.
+Messaging commences at this point.
 
-A user can quit either with the `/quit` command or by quitting the client (e.g.,
-ctrl-c or ctrl-d).
+6. Client waits for user input from console
+7. If the input starts with a `/`, it is interpreted in a special way (see **Commands** below).
+8. Otherwise, the input is interpreted as a message and sent to the server.
+9. Server sends the message to all other connected users, and we go back to step 6
 
 ## Crypto Library
-The crypto library encapsulates all the math needed to encrypt, decrypt, and
-perform the handshake. It provides 4 functions:
+The `Crypto` class encapsulates all the encryption functionality. It provides 4 methods:
 
-- `init_keys`: The first of a 2 part
-  procedure is to generate the public and private keys. This function produces a
-  tuple of a public key and a private key.
-- `handshake`: This second part takes a public key (from the other party).
-  It combines this public key with the private key generated (and internally
-  stored) from the first part. It computes a shared secret and uses it to
-  initialize the cipher used to `encrypt` and `decrypt` messages. You do not
-  need to access the shared secret. This function does not return anything; it
-  finishes setting up the crypto library for use.
-- `encrypt`: This function takes a message as bytes and encrypts it. The
-  function returns a ciphertext as bytes.
-- `decrypt`: This function takes a ciphertext as bytes and returns a message as
-  bytes. It can only be called after `init_keys` and `handshake`
-  have been called.
+- `init_keys`: The first of a two-part procedure to generate the shared secret. 
+  This method generates a pair of a public and private key.
+  It returns the public key and stores the private key internally.
+- `handshake`: The second part of the procedure to generate the shared secret.
+  This method takes a public key **from the other party**
+  and combines it with the previously generated private key.
+  The resulting shared secret is stored internally.
+  After calling this method, you can call `encrypt` and `decrypt` 
+  to communicate securely with the party whose public key was used in this step.
+- `encrypt`: This method takes a message as a bytestring and encrypts it. 
+  It returns a ciphertext as a bytestring.
+- `decrypt`: This function takes a ciphertext as a bytestring 
+  and returns a message as a bytestring.
 
 ## Commands
 A user can type any of the following commands for the desired effect:
