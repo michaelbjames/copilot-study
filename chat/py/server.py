@@ -18,14 +18,22 @@ class Client(object):
         self.conn = conn
         self.addr = addr
         self.username = None
-        self.crypto = crypto.PrimeDiffieHellman()
+        self.crypto = crypto.Crypto()
 
     def do_dh_handshake(self):
-        pubkey, complete_handshake = self.crypto.handshake()
-        self.conn.send(pubkey)
-        b_bytes = self.conn.recv(MESSAGE_SIZE_BYTES)
-        other_pub_key = self.crypto.deserialize_key(b_bytes)
-        complete_handshake(other_pub_key)
+        try:
+            pubkey = self.crypto.init_keys()
+            self.conn.send(pubkey)
+            b_repr = self.conn.recv(MESSAGE_SIZE_BYTES)
+            self.crypto.handshake(b_repr)
+        except ValueError as e:
+            print("Error in DH handshake: {}".format(e))
+            self.conn.close()
+            return
+        except TypeError as e:
+            print("Error in DH handshake: {}".format(e))
+            self.conn.close()
+            return
 
     def send_message(self, msg:str):
         msg_bytes = msg.encode()
@@ -151,12 +159,11 @@ class Server(object):
                     self.close_connection(client)
                     return
                 self.handle_msg(client, msg)
-        except OSError:
-            return
         except ConnectionError:
             self.close_connection(client)
             return
-
+        except OSError:
+            return
 
 if __name__ == '__main__':
     main()
