@@ -30,7 +30,7 @@ You'll need:
 
 # Chat Server
 
-MyRC is a secure chat client and server.
+MyRC is a secure chat application.
 Multiple clients connect to a single server.
 When a client sends a chat message,
 it is broadcast to all other connected clients
@@ -38,24 +38,42 @@ it is broadcast to all other connected clients
 Each client picks a username, which must be unique.
 All messages are encrypted.
 
+## Architecture
+There are three main components to this application:
+- The server: listens for connections and manages the chat room.
+- The client: connects to the server; listens to user input and relays messages to/from the server.
+- The crypto library: both client and server rely on this library to encrypt and decrypt messages.
+
 ## Protocol
 
-1. Client connects to server (localhost:4040)
-2. Server sends its public key to the client
-3. Client sends its public key to the server
+1. Client connects to server (`localhost:4040`).
+2. Server sends its public key to the client.
+3. Client sends its public key to the server.
 
 At this point, a *shared secret* is generated, and all comunication henceforth is encrypted with that secret.
 
-3. Server asks for a username
-4. Client gives a username
+3. Server asks for a username.
+4. Client gives a username.
 5. Server sends a welcome message to all connected clients.
 
 Messaging commences at this point.
 
-6. Client waits for user input from console
-7. If the input starts with a `/`, it is interpreted in a special way (see **Commands** below).
-8. Otherwise, the input is interpreted as a message and sent to the server.
-9. Server sends the message to all other connected users, and we go back to step 6
+6. Client waits for a message from the server *or* user input from console.
+7. If it gets a message from the server, the message is shown to the client.
+8. If it gets input from the user, and the input starts with a `/`, it is interpreted as a *command* (see below).
+9. Otherwise, the input is interpreted as a *message* and sent to the server.
+10. Server sends the message to all other connected users.
+
+### Commands
+
+The following are the supported commands and their effect:
+```
+/quit : disconnects. Same as ctrl-c or ctrl-d
+/list : lists the connected other client usernames
+/help : show this list
+```
+
+All other commands are invalid, and their behavior is unspecified.
 
 ## Crypto Library
 The `Crypto` class encapsulates all the encryption functionality. It provides 4 methods:
@@ -74,29 +92,14 @@ The `Crypto` class encapsulates all the encryption functionality. It provides 4 
 - `decrypt`: This function takes a ciphertext as a bytestring 
   and returns a message as a bytestring.
 
-## Commands
-A user can type any of the following commands for the desired effect:
-```
-/quit : disconnects. Same as ctrl-c or ctrl-d
-/list : lists the connected other client usernames
-/help : show this list
-```
-Any message that's not a command is sent to all connected clients (except the
-one who sent the message).
+## Running the application
 
-# Architecture
-There are three main components to this application:
-- The server: This listens for connections and manages the chat room
-- The client: This connects to the server
-- Shared Crypto library: both files rely on this to encrypt and decrypt messages.
-
-# Usage
-## Server
+### Server
 The server needs to be running first and can be invoked with:
 - Python: `chat/py$ python3 server.py`
 - Rust: `chat/rust/server$ cargo run`
 
-## Client
+### Client
 The client can be called with:
 - Python: `chat/py$ python3 client.py localhost 4040`
 - Rust: `chat/rust/client$ cargo run localhost 4040`
