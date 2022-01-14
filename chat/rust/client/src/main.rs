@@ -53,7 +53,7 @@ impl Chat {
                 match std::io::stdin().read_line(&mut line).unwrap() {
                     0 => assert!(true),
                     _ => {
-                        self.send(line);
+                        self.send(&line);
                     }
                 }
             }
@@ -63,8 +63,8 @@ impl Chat {
         }
     }
 
-    pub fn send(&mut self, line: String) {
-        let msg = line.trim().to_string();
+    pub fn send(&mut self, line: &str) {
+        let msg = line.trim();
         let msg_bytes = msg.as_bytes();
         let encrypted_msg = self.crypto.encrypt(msg_bytes);
         self.socket.write(&encrypted_msg).unwrap();

@@ -1,4 +1,3 @@
-pub use bp256::r1::BrainpoolP256r1;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::Write;
@@ -8,8 +7,6 @@ extern crate openssl;
 extern crate rand;
 extern crate rustc_serialize;
 use crypto_utils::Crypto;
-use num::BigInt;
-use rustc_serialize::hex::ToHex;
 use std::io::*;
 use std::thread;
 
@@ -43,7 +40,7 @@ impl Client {
         return text.to_string();
     }
 
-    pub fn send_message(&mut self, msg: String) {
+    pub fn send_message(&mut self, msg: &str) {
         let msg_bytes = msg.as_bytes();
         let encrypted_msg = self.crypto.encrypt(msg_bytes);
         println!("Server Sent: {}", &msg);
@@ -130,7 +127,7 @@ impl Server {
     }
 
     pub fn negotiate_username(&self, client: &mut Client) -> Option<String> {
-        client.send_message("Enter username: {}".to_string());
+        client.send_message("Enter username: {}");
         let username = &client.receive_message();
         let username = client.decrypt_msg(username);
         if username.is_empty() {
@@ -187,7 +184,7 @@ impl Server {
         self.clients.remove(&client.addr);
     }
 
-    pub fn handle_msg(&mut self, client: &mut Client, msg: String) {
+    pub fn handle_msg(&mut self, client: &mut Client, msg: &str) {
         if msg.len() == 0 {
             return;
         } else if msg.starts_with('/') {
@@ -196,24 +193,23 @@ impl Server {
                 self.close_connection(client);
                 return;
             } else if msg == "/list" {
-                client.send_message(format!("Invalid command. Type /help for help.\n"));
+                client.send_message("Invalid command. Type /help for help.\n");
                 return;
             } else if msg == "/help" {
                 client.send_message(
                     "
                     /quit - quit the chat
                     /list - list usernames
-                    /help - show this help message"
-                        .to_string(),
+                    /help - show this help message",
                 );
                 return;
             } else {
-                client.send_message("Invalid command! Type /help for help.\n".to_string());
+                client.send_message("Invalid command! Type /help for help.\n");
             }
         } else {
             for (client_addr, _) in self.clients.iter() {
                 if client_addr != &client.addr {
-                    client.send_message(format!("{}: {}", client.username.as_ref().unwrap(), msg));
+                    client.send_message(&format!("{:?}: {}", Some(client.username.as_ref()), msg));
                 }
             }
         }
