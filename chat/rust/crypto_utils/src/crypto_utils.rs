@@ -14,6 +14,7 @@ pub trait Crypto {
     fn pad_be(&self, key: &BigUint) -> KeyBytes;
 }
 
+#[derive(Clone)]
 pub struct PrimeDiffieHellman {
     p: usize,
     g: usize,

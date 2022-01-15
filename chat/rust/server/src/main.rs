@@ -1,217 +1,241 @@
+use crypto_utils::{Crypto, PrimeDiffieHellman};
 use std::collections::HashMap;
-use std::collections::HashSet;
-use std::io::Write;
-use std::net::{SocketAddr, TcpListener, TcpStream};
-extern crate crypto_utils;
-extern crate openssl;
-extern crate rand;
-extern crate rustc_serialize;
-use crypto_utils::Crypto;
-use std::io::*;
+use std::io::{self, *};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
 const LOCAL: &str = "127.0.0.1:6000";
 
-pub struct Client {
-    conn: TcpStream,
-    addr: SocketAddr,
-    username: Option<String>,
-    crypto: crypto_utils::PrimeDiffieHellman,
+pub struct EncryptedStream {
+    socket: TcpStream,
+    crypto: PrimeDiffieHellman,
 }
 
-impl Client {
-    pub fn new(socket: TcpStream, address: SocketAddr) -> Client {
-        let conn = socket;
-        let addr = address;
-        let username = None;
-        let crypto = crypto_utils::PrimeDiffieHellman::new();
-        Client {
-            conn,
-            addr,
-            username,
-            crypto,
+impl EncryptedStream {
+    pub fn establish(mut socket: TcpStream) -> io::Result<Self> {
+        let mut crypto = PrimeDiffieHellman::new();
+
+        let (mut priv_key, pubkey) = crypto.generate_keys();
+        socket.write(&pubkey.to_vec())?;
+
+        let b_bytes = {
+            let mut data = [0 as u8; 16]; // using 16 byte buffer
+            socket.read(&mut data)?;
+            data
+        };
+
+        let other_pub_key = crypto.deserialize(&b_bytes);
+        crypto.handshake(&mut priv_key, &other_pub_key);
+        println!("Handshake complete!");
+
+        Ok(EncryptedStream { socket, crypto })
+    }
+
+    pub fn close(&mut self) -> () {
+        if let Err(e) = self.socket.shutdown(Shutdown::Read) {
+            eprintln!("Error shutting down socket: {:?}", e);
         }
     }
 
-    pub fn decrypt_msg(&self, ciphertext: &[u8]) -> String {
-        let message = self.crypto.decrypt(ciphertext);
-        let text = std::str::from_utf8(&message).expect("Error decrypting message!");
-        println!("Decrypted message: {}", &text.to_string());
-        return text.to_string();
-    }
-
-    pub fn send_message(&mut self, msg: &str) {
+    pub fn send(&mut self, msg: &str) -> io::Result<()> {
         let msg_bytes = msg.as_bytes();
         let encrypted_msg = self.crypto.encrypt(msg_bytes);
         println!("Server Sent: {}", &msg);
-        self.conn.write(&encrypted_msg).unwrap();
-        return;
+        self.socket.write(&encrypted_msg)?;
+        Ok(())
     }
 
-    pub fn receive_message(&mut self) -> [u8; 16] {
-        let mut data = [0 as u8; 16]; // using 16 byte buffer
-        match self.conn.read(&mut data) {
-            Ok(_) => {
-                return data;
-            }
-            Err(e) => {
-                println!("Failed to receive data: {}", e);
-                return data;
-            }
-        }
+    pub fn try_clone(&self) -> io::Result<Self> {
+        let socket = self.socket.try_clone()?;
+
+        Ok(EncryptedStream {
+            socket,
+            crypto: self.crypto.clone(),
+        })
     }
 
-    fn do_dh_handshake(&mut self) {
-        let (mut priv_key, pubkey) = self.crypto.generate_keys();
-        self.conn.write(&pubkey.to_vec()).unwrap();
-        let b_bytes = self.receive_message();
-        let other_pub_key = self.crypto.deserialize(&b_bytes);
-        self.crypto.handshake(&mut priv_key, &other_pub_key);
-        println!("Handshake complete!");
+    pub fn recv(&mut self) -> io::Result<Option<String>> {
+        let raw = Self::receive_raw(&mut self.socket)?;
+        let message = self.crypto.decrypt(&raw);
+        let txt = std::str::from_utf8(&message)
+            .ok()
+            .map(str::trim)
+            .map(String::from);
+        Ok(txt)
+    }
+
+    fn receive_raw(socket: &mut TcpStream) -> io::Result<Vec<u8>> {
+        let mut data = vec![0 as u8; 16]; // using 16 byte buffer
+        socket.read(&mut data).map(|_| data)
     }
 }
-pub struct Server {
-    socket: TcpListener,
-    clients: HashMap<SocketAddr, Client>,
-    username_list: HashSet<String>,
-}
-fn main() {
-    //Testing
-    let mut server = Server::new();
-    server.run();
+
+enum Message {
+    Connected(EncryptedStream),
+    Disconnected,
+    Text(String),
 }
 
-impl Server {
-    pub fn new() -> Server {
-        // Start a TCP listener.
+fn accept(channel: Sender<(SocketAddr, Message)>) {
+    loop {
         let socket = match TcpListener::bind(LOCAL) {
             Ok(socket) => socket,
             Err(e) => panic!("could not read start TCP listener: {}", e),
         };
-        let clients = HashMap::new();
-        let username_list = HashSet::new();
-        Server {
-            socket,
-            clients,
-            username_list,
+
+        for stream in socket.incoming() {
+            match stream {
+                Ok(stream) => {
+                    let local_channel = channel.clone();
+                    thread::spawn(move || handle_stream(stream, local_channel));
+                }
+                Err(e) => {
+                    eprintln!("Accepting socket shutdown {}", e);
+                }
+            }
         }
     }
+}
 
-    fn run(&mut self) {
-        loop {
-            // Wait for a connection, add it to a list of connections.
-            // Select between existing sockets and handle that socket.
-            // if it is a new socket, do the handshake, negotiate username,
-            // and add it to the list of connections.
+fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> io::Result<()> {
+    let addr = socket.peer_addr()?;
+    let mut enc_stream = EncryptedStream::establish(socket)?;
+    let foreign_stream = enc_stream.try_clone()?;
 
-            for stream in self.socket.incoming() {
-                match stream {
-                    Ok(stream) => {
-                        let addr = stream.peer_addr().unwrap();
-                        let mut client = Client::new(stream, addr);
+    // Notify the server that we've established a connection
+    channel
+        .send((addr, Message::Connected(foreign_stream)))
+        .unwrap();
 
-                        thread::spawn(move || {
-                            //connection succeeded
-                            println!("Connection from {}", addr);
-                            //self.handle_client(&mut client); //TODO
-                        });
+    loop {
+        let msg = match enc_stream.recv() {
+            Ok(Some(txt)) => Message::Text(txt),
+            Err(_) => Message::Disconnected,
+            _ => {
+                // ignored
+                continue;
+            }
+        };
 
-                        client.do_dh_handshake();
+        channel.send((addr, msg)).unwrap();
+    }
+}
+
+struct Client {
+    stream: EncryptedStream,
+    username: Option<String>,
+}
+
+impl Client {
+    fn send(&mut self, txt: &str) {
+        if let Err(e) = self.stream.send(txt) {
+            eprintln!("Error sending message to client: {:?}", e);
+        }
+    }
+}
+
+#[derive(Default)]
+struct ChatServer {
+    clients: HashMap<SocketAddr, Client>,
+}
+
+impl ChatServer {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    fn handle_msg(&mut self, addr: SocketAddr, msg: Message) {
+        match msg {
+            Message::Connected(stream) => {
+                let mut client = Client {
+                    stream,
+                    username: None,
+                };
+
+                // We ignore the possible failure here because it'll come back to us via a disconnect later
+                client.send("Enter username: ");
+
+                self.clients.insert(addr, client);
+            }
+            Message::Disconnected => {
+                self.clients.remove(&addr);
+            }
+            Message::Text(txt) => {
+                let username = {
+                    self.clients
+                        .get_mut(&addr)
+                        .expect("Text messages should only come from clients that are known")
+                        .username
+                        .clone()
+                };
+                let proposed_username = txt.clone();
+                // Negotiating username
+                if username == None {
+                    // user name is taken
+                    let is_unique = self
+                        .clients
+                        .values()
+                        .find(move |c| c.username.as_ref() == Some(&txt))
+                        .is_none();
+                    let client = self
+                        .clients
+                        .get_mut(&addr)
+                        .expect("Text messages should only come from clients that are known");
+                    if !is_unique {
+                        client.send("Username taken!\nEnter username: ");
+                    } else {
+                        client.username = Some(proposed_username);
                     }
-                    Err(e) => {
-                        let _ = writeln!(std::io::stderr(), "Connection failed: {}", e);
-                    }
+                } else {
+                    self.handle_chat_msg(addr, &txt);
                 }
             }
         }
     }
 
-    pub fn negotiate_username(&self, client: &mut Client) -> Option<String> {
-        client.send_message("Enter username: {}");
-        let username = &client.receive_message();
-        let username = client.decrypt_msg(username);
-        if username.is_empty() {
-            return None;
-        }
-
-        let username_trimmed = username.trim().to_string();
-        if self.username_list.contains(&username_trimmed) {
-            //client.send_message("Username taken!".to_string());
-            self.negotiate_username(client);
-        } else {
-            client.username = Some(username_trimmed.clone());
-        }
-        return Some(username_trimmed);
-    }
-
-    pub fn handle_client(&mut self, client: &mut Client) {
-        // 1. Initiate the diffie-hellman exchange.
-        client.do_dh_handshake();
-        // 2. Receive a username.
-        let username = self.negotiate_username(client);
-        // 3. Check if username is available.
-        if username == None {
-            self.close_connection(client);
-            return;
-        }
-        self.username_list
-            .insert(username.unwrap().trim().to_string());
-        // TODO: Send username to all clients
-        loop {
-            let got = client.receive_message();
-            let message = client.decrypt_msg(&got);
-            if message.is_empty() {
-                self.close_connection(client);
-                return;
-            }
-        }
-    }
-
-    pub fn close_connection(&mut self, client: &mut Client) {
-        println!("Closing connection {}", client.addr);
-        match client.conn.shutdown(std::net::Shutdown::Both) {
-            Ok(_) => {}
-            Err(e) => {
-                println!("Failed to close connection: {}", e);
-            }
-        }
-        if self
-            .username_list
-            .contains(client.username.as_ref().unwrap())
-        {
-            self.username_list.remove(client.username.as_ref().unwrap());
-        }
-        self.clients.remove(&client.addr);
-    }
-
-    pub fn handle_msg(&mut self, client: &mut Client, msg: &str) {
+    pub fn handle_chat_msg(&mut self, addr: SocketAddr, msg: &str) {
         if msg.len() == 0 {
             return;
-        } else if msg.starts_with('/') {
-            let msg = msg.trim();
+        }
+        if msg.starts_with('/') {
+            let client = self.clients.get_mut(&addr).unwrap();
             if msg == "/quit" {
-                self.close_connection(client);
-                return;
+                client.stream.close();
             } else if msg == "/list" {
-                client.send_message("Invalid command. Type /help for help.\n");
-                return;
+                client.send("Invalid command. Type /help for help.\n");
             } else if msg == "/help" {
-                client.send_message(
+                client.send(
                     "
                     /quit - quit the chat
                     /list - list usernames
                     /help - show this help message",
                 );
-                return;
             } else {
-                client.send_message("Invalid command! Type /help for help.\n");
+                client.send("Invalid command! Type /help for help.\n");
             }
         } else {
-            for (client_addr, _) in self.clients.iter() {
-                if client_addr != &client.addr {
-                    client.send_message(&format!("{:?}: {}", Some(client.username.as_ref()), msg));
+            // Invariant, we only call handle_chat_msg for clients with usernames
+            let chat = {
+                let uname = self.clients[&addr].username.as_ref().unwrap();
+                format!("{}: {}", uname, msg)
+            };
+
+            for (client_addr, client) in self.clients.iter_mut() {
+                if client_addr != &addr {
+                    client.send(&chat);
                 }
             }
         }
+    }
+}
+
+fn main() {
+    let (send, recv) = channel();
+    thread::spawn(move || accept(send));
+
+    let mut server = ChatServer::new();
+    while let Ok((addr, msg)) = recv.recv() {
+        server.handle_msg(addr, msg)
     }
 }
