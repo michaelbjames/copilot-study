@@ -33,14 +33,15 @@ impl EncryptedStream {
     }
 
     pub fn close(&mut self) -> () {
-        if let Err(e) = self.socket.shutdown(Shutdown::Read) {
+        if let Err(e) = self.socket.shutdown(Shutdown::Both) {
             eprintln!("Error shutting down socket: {:?}", e);
         }
     }
 
     pub fn send(&mut self, msg: &str) -> io::Result<()> {
-        let msg_bytes = msg.as_bytes();
-        let encrypted_msg = self.crypto.encrypt(msg_bytes);
+        let mut msg_bytes: Vec<u8> = msg.as_bytes().to_vec();
+        msg_bytes.push(msg.len() as u8); // add data length
+        let encrypted_msg = self.crypto.encrypt(&msg_bytes);
         println!("Server Sent: {}", &msg);
         self.socket.write(&encrypted_msg)?;
         Ok(())
@@ -62,11 +63,12 @@ impl EncryptedStream {
             .ok()
             .map(str::trim)
             .map(String::from);
+        println!("Server Received: {:?}", &txt);
         Ok(txt)
     }
 
     fn receive_raw(socket: &mut TcpStream) -> io::Result<Vec<u8>> {
-        let mut data = vec![0 as u8; 16]; // using 16 byte buffer
+        let mut data = vec![0 as u8; 256]; // using 256 byte buffer
         socket.read(&mut data).map(|_| data)
     }
 }
@@ -186,6 +188,7 @@ impl ChatServer {
                         client.send("Username taken!\nEnter username: ");
                     } else {
                         client.username = Some(proposed_username);
+                        client.send("Username granted!");
                     }
                 } else {
                     self.handle_chat_msg(addr, &txt);
@@ -202,6 +205,7 @@ impl ChatServer {
             let client = self.clients.get_mut(&addr).unwrap();
             if msg == "/quit" {
                 client.stream.close();
+                self.clients.remove(&addr);
             } else if msg == "/list" {
                 client.send("Invalid command. Type /help for help.\n");
             } else if msg == "/help" {
@@ -222,9 +226,9 @@ impl ChatServer {
             };
 
             for (client_addr, client) in self.clients.iter_mut() {
-                if client_addr != &addr {
+                //if client_addr == &addr {
                     client.send(&chat);
-                }
+                //}
             }
         }
     }

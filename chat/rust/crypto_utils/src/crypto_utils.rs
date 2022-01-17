@@ -62,25 +62,32 @@ impl Crypto for PrimeDiffieHellman {
     }
 
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+        let mut encryptvec: Vec<u8> = plaintext.to_vec();
         let mut ciphertext = vec![0; plaintext.len() + self.cipher.block_size()];
         let mut crypter = Crypter::new(self.cipher, Mode::Encrypt, &self.key, None).unwrap();
         crypter.pad(true);
-
-        let count = crypter.update(plaintext, &mut ciphertext).unwrap();
+        let datalen = encryptvec.pop();
+        let count = crypter.update(&encryptvec, &mut ciphertext).unwrap();
         let rest = crypter.finalize(&mut ciphertext[count..]).unwrap();
 
         ciphertext.truncate(count + rest);
+        ciphertext.push(datalen.unwrap());
         ciphertext
     }
 
     fn decrypt(&self, data: &[u8]) -> Vec<u8> {
         let mut decrypted = Crypter::new(self.cipher, Mode::Decrypt, &self.key, None).unwrap();
         let mut output = vec![0_u8; data.len() + self.cipher.block_size()];
-
-        let decrypted_result = decrypted.update(data, &mut output);
+        let mut decryptvec: Vec<u8> = data.to_vec().into_iter().rev().skip_while(|&x| x == 0).collect();
+        decryptvec.reverse();
+        let datalen = decryptvec.pop();
+        let decrypted_result = decrypted.update(&decryptvec, &mut output);
 
         match decrypted_result {
-            Ok(_) => output,
+            Ok(_) => {
+                output.truncate(datalen.unwrap() as usize);
+                output
+            }
             Err(e) => panic!("Error decrypting text: {}", e),
         }
     }
