@@ -13,7 +13,7 @@ def main():
     server = Server()
     server.run()
 
-class Client(object):
+class ClientConnection(object):
     def __init__(self, conn, addr):
         self.conn = conn
         self.addr = addr
@@ -36,11 +36,18 @@ class Client(object):
             return
 
     def send_message(self, msg:str):
+        """
+        Sends an encrypted message to the connected client.
+        """
         msg_bytes = msg.encode()
         self.conn.send(self.crypto.encrypt(msg_bytes))
 
-    def decrypt_msg(self, ciphertext):
+    def recv_message(self):
+        """
+        Returns a decrypted message string or None if the decryption failed.
+        """
         try:
+            ciphertext = self.conn.recv(MESSAGE_SIZE_BYTES)
             message = self.crypto.decrypt(ciphertext)
             if message is None:
                 return None
@@ -56,18 +63,18 @@ class Server(object):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.bind(('localhost', PORT_NUMBER))
             self.sock.listen(1)
-            self.clients = {}
+            self.client_conns = {}
             self.username_list = set()
         except OSError as e:
             print("Could not create socket: {}".format(e))
             sys.exit(1)
 
-    def close_connection(self, client):
-        print("Connection closed from {}".format(client.addr))
-        client.conn.close()
-        if client.username in self.username_list:
-            self.username_list.remove(client.username)
-        del self.clients[client.addr]
+    def close_connection(self, client_conn):
+        print("Connection closed from {}".format(client_conn.addr))
+        client_conn.conn.close()
+        if client_conn.username in self.username_list:
+            self.username_list.remove(client_conn.username)
+        del self.client_conns[client_conn.addr]
 
 
 

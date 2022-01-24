@@ -13,7 +13,7 @@ def main():
     server = Server()
     server.run()
 
-class Client(object):
+class ClientConnection(object):
     def __init__(self, conn, addr):
         self.conn = conn
         self.addr = addr
@@ -36,11 +36,18 @@ class Client(object):
             return
 
     def send_message(self, msg:str):
+        """
+        Sends an encrypted message to the connected client.
+        """
         msg_bytes = msg.encode()
         self.conn.send(self.crypto.encrypt(msg_bytes))
 
-    def decrypt_msg(self, ciphertext):
+    def recv_message(self):
+        """
+        Returns a decrypted message string or None if the decryption failed.
+        """
         try:
+            ciphertext = self.conn.recv(MESSAGE_SIZE_BYTES)
             message = self.crypto.decrypt(ciphertext)
             if message is None:
                 return None
@@ -56,7 +63,7 @@ class Server(object):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.bind(('localhost', PORT_NUMBER))
             self.sock.listen(1)
-            self.clients = {}
+            self.client_conns = {}
             self.username_list = set()
         except OSError as e:
             print("Could not create socket: {}".format(e))
@@ -70,70 +77,70 @@ class Server(object):
             # and add it to the list of connections.
             (connection,src) = self.sock.accept()
             try:
-                client = Client(connection, src)
-                self.clients[src] = {
-                    "client": client,
-                    "thread": threading.Thread(target=self.handle_client, args=(client,))
+                client_conn = ClientConnection(connection, src)
+                self.client_conns[src] = {
+                    "client": client_conn,
+                    "thread": threading.Thread(target=self.handle_client, args=(client_conn,))
                 }
-                self.clients[src]["thread"].start()
+                self.client_conns[src]["thread"].start()
             except Exception as e:
                 print(e)
                 connection.close()
-                del self.clients[src]
+                del self.client_conns[src]
 
-    def negotiate_username(self, client):
-        client.send_message("Enter username: ")
-        username = client.decrypt_msg(client.conn.recv(MESSAGE_SIZE_BYTES))
+    def negotiate_username(self, client_conn):
+        client_conn.send_message("Enter username: ")
+        username = client_conn.recv_message()
         if username is None:
             return None
         username = username.strip()
         if username in self.username_list:
-            client.send_message("Username already taken. Try again.")
-            return self.negotiate_username(client)
+            client_conn.send_message("Username already taken. Try again.")
+            return self.negotiate_username(client_conn)
         else:
-            client.username = username
+            client_conn.username = username
             self.username_list.add(username)
             return username
 
-    def close_connection(self, client):
-        print("Connection closed from {}".format(client.addr))
-        client.conn.close()
-        if client.username in self.username_list:
-            self.username_list.remove(client.username)
-        del self.clients[client.addr]
+    def close_connection(self, client_conn):
+        print("Connection closed from {}".format(client_conn.addr))
+        client_conn.conn.close()
+        if client_conn.username in self.username_list:
+            self.username_list.remove(client_conn.username)
+        del self.client_conns[client_conn.addr]
 
     def send_all(self, msg):
-        for client_addr, client_data in self.clients.items():
+        for client_addr, client_data in self.client_conns.items():
             client_data["client"].send_message(msg)
 
-    def handle_msg(self, client, msg):
+    def handle_msg(self, client_conn, msg):
         if len(msg) == 0:
             return
         if msg[0] == "/":
             msg = msg.strip()
             if msg == "/quit":
-                self.close_connection(client)
+                self.close_connection(client_conn)
                 return
             elif msg == "/list":
-                client.send_message("\n".join(self.username_list) + "\n")
+                client_conn.send_message("\n".join(self.username_list) + "\n")
                 return
             elif msg == "/help":
-                client.send_message("""
+                client_conn.send_message("""
 /quit - quit the chat
 /list - list usernames
 /help - show this help message
 """)
                 return
             else:
-                client.send_message("Invalid command. Type /help for help.")
+                client_conn.send_message("Invalid command. Type /help for help.")
                 return
         else:
-            for client_addr, client_data in self.clients.items():
-                if client_addr != client.addr:
-                    client_data["client"].send_message("{}: {}".format(client.username, msg))
+            for client_addr, client_data in self.client_conns.items():
+                if client_addr != client_conn.addr:
+                    client_data["client"].send_message("{}: {}".format(client_conn.username, msg))
 
 
-    def handle_client(self, client):
+    def handle_client(self, client_conn):
         """
         Handle a client connection:
             1. Initiate the diffie-hellman exchange.
@@ -145,22 +152,21 @@ class Server(object):
             7. Send the message to all other clients.
         """
         try:
-            client.do_dh_handshake()
-            username = self.negotiate_username(client)
+            client_conn.do_dh_handshake()
+            username = self.negotiate_username(client_conn)
             if username is None:
-                self.close_connection(client)
+                self.close_connection(client_conn)
                 return
-            client.username = username
+            client_conn.username = username
             self.send_all("Welcome {}!\n".format(username))
             while True:
-                got = client.conn.recv(MESSAGE_SIZE_BYTES)
-                msg = client.decrypt_msg(got)
+                msg = client_conn.recv_message()
                 if msg is None:
-                    self.close_connection(client)
+                    self.close_connection(client_conn)
                     return
-                self.handle_msg(client, msg)
+                self.handle_msg(client_conn, msg)
         except ConnectionError:
-            self.close_connection(client)
+            self.close_connection(client_conn)
             return
         except OSError:
             return
