@@ -5,7 +5,7 @@ use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
-const LOCAL: &str = "127.0.0.1:6000";
+const LOCAL: &str = "127.0.0.1:4040";
 
 pub struct EncryptedStream {
     socket: TcpStream,
@@ -16,34 +16,34 @@ impl EncryptedStream {
     pub fn establish(mut socket: TcpStream) -> io::Result<Self> {
         let mut crypto = PrimeDiffieHellman::new();
 
-        let (mut priv_key, pubkey) = crypto.generate_keys();
-        socket.write(&pubkey.to_vec())?;
+        let (priv_key, pubkey) = crypto.generate_keys();
+        socket.write_all(&pubkey.to_vec())?;
 
         let b_bytes = {
-            let mut data = [0 as u8; 16]; // using 16 byte buffer
-            socket.read(&mut data)?;
+            let mut data = [0_u8; 16]; // using 16 byte buffer
+            socket.read_exact(&mut data)?;
             data
         };
 
         let other_pub_key = crypto.deserialize(&b_bytes);
-        crypto.handshake(&mut priv_key, &other_pub_key);
+        crypto.handshake(&priv_key, &other_pub_key);
         println!("Handshake complete!");
 
         Ok(EncryptedStream { socket, crypto })
     }
 
-    pub fn close(&mut self) -> () {
+    pub fn close(&mut self) {
         if let Err(e) = self.socket.shutdown(Shutdown::Both) {
             eprintln!("Error shutting down socket: {:?}", e);
         }
     }
 
     pub fn send(&mut self, msg: &str) -> io::Result<()> {
-        let mut msg_bytes: Vec<u8> = msg.as_bytes().to_vec();
-        msg_bytes.push(msg.len() as u8); // add data length
+        let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
+        msg_bytes.push(msg_bytes.len() as u8); // add data length
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
-        println!("Server Sent: {}", &msg);
-        self.socket.write(&encrypted_msg)?;
+        self.socket.write_all(&encrypted_msg)?;
+        println!("Sent: {}", &msg);
         Ok(())
     }
 
@@ -63,12 +63,12 @@ impl EncryptedStream {
             .ok()
             .map(str::trim)
             .map(String::from);
-        println!("Server Received: {:?}", &txt);
+        println!("Received: {:?}", &txt);
         Ok(txt)
     }
 
     fn receive_raw(socket: &mut TcpStream) -> io::Result<Vec<u8>> {
-        let mut data = vec![0 as u8; 256]; // using 256 byte buffer
+        let mut data = vec![0_u8; 256]; // using 256 byte buffer
         socket.read(&mut data).map(|_| data)
     }
 }
@@ -124,12 +124,12 @@ fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> i
     }
 }
 
-struct Client {
+struct ClientConnection {
     stream: EncryptedStream,
     username: Option<String>,
 }
 
-impl Client {
+impl ClientConnection {
     fn send(&mut self, txt: &str) {
         if let Err(e) = self.stream.send(txt) {
             eprintln!("Error sending message to client: {:?}", e);
@@ -139,7 +139,7 @@ impl Client {
 
 #[derive(Default)]
 struct ChatServer {
-    clients: HashMap<SocketAddr, Client>,
+    clients: HashMap<SocketAddr, ClientConnection>,
 }
 
 impl ChatServer {
@@ -150,7 +150,7 @@ impl ChatServer {
     fn handle_msg(&mut self, addr: SocketAddr, msg: Message) {
         match msg {
             Message::Connected(stream) => {
-                let mut client = Client {
+                let mut client = ClientConnection {
                     stream,
                     username: None,
                 };
@@ -198,16 +198,19 @@ impl ChatServer {
     }
 
     pub fn handle_chat_msg(&mut self, addr: SocketAddr, msg: &str) {
-        if msg.len() == 0 {
+        if msg.is_empty() {
             return;
         }
         if msg.starts_with('/') {
             let client = self.clients.get_mut(&addr).unwrap();
+
             if msg == "/quit" {
                 client.stream.close();
                 self.clients.remove(&addr);
             } else if msg == "/list" {
-                client.send("Invalid command. Type /help for help.\n");
+                for (_client_addr, client) in self.clients.iter_mut() {
+                    client.send(&format!("Client username: {:?}", client.username));
+                }
             } else if msg == "/help" {
                 client.send(
                     "
@@ -226,9 +229,9 @@ impl ChatServer {
             };
 
             for (client_addr, client) in self.clients.iter_mut() {
-                //if client_addr == &addr {
+                if client_addr != &addr {
                     client.send(&chat);
-                //}
+                }
             }
         }
     }

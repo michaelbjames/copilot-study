@@ -1,3 +1,5 @@
+use ::std::panic;
+
 use num::BigUint;
 use openssl::symm::{Cipher, Crypter, Mode};
 use rand::Rng;
@@ -26,7 +28,7 @@ impl PrimeDiffieHellman {
     pub fn new() -> PrimeDiffieHellman {
         PrimeDiffieHellman {
             cipher: Cipher::aes_128_ecb(),
-            key: [0u8; 16],
+            key: [0_u8; 16],
             p: 997,
             g: 2,
         }
@@ -78,29 +80,34 @@ impl Crypto for PrimeDiffieHellman {
     fn decrypt(&self, data: &[u8]) -> Vec<u8> {
         let mut decrypted = Crypter::new(self.cipher, Mode::Decrypt, &self.key, None).unwrap();
         let mut output = vec![0_u8; data.len() + self.cipher.block_size()];
-        let mut decryptvec: Vec<u8> = data.to_vec().into_iter().rev().skip_while(|&x| x == 0).collect();
+        let mut decryptvec: Vec<u8> = data
+            .to_vec()
+            .into_iter()
+            .rev()
+            .skip_while(|&x| x == 0)
+            .collect();
         decryptvec.reverse();
-        let datalen = decryptvec.pop();
-        let decrypted_result = decrypted.update(&decryptvec, &mut output);
 
-        match decrypted_result {
-            Ok(_) => {
-                output.truncate(datalen.unwrap() as usize);
+        let datalen = decryptvec.pop();
+        decrypted.update(&decryptvec, &mut output).unwrap();
+
+        match datalen {
+            Some(x) => {
+                output.truncate(x as usize);
                 output
             }
-            Err(e) => panic!("Error decrypting text: {}", e),
+            None => panic!("Decryption failed"),
         }
     }
 
     fn handshake(&mut self, priv_key: &BigUint, other_pub_key: &BigUint) {
         let shared_secret = self.compute_shared_secret(priv_key, other_pub_key);
-        println!("Shared secret: {}", shared_secret);
         let shared_key = self.pad_be(&shared_secret);
-        self.init_key(&shared_key);
+        self.key = shared_key;
     }
 
     fn serialize(&self, pub_key: &BigUint) -> KeyBytes {
-        self.pad_be(&pub_key)
+        self.pad_be(pub_key)
     }
 
     fn deserialize(&self, pub_key: &KeyBytes) -> BigUint {

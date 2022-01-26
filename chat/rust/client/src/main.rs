@@ -1,95 +1,144 @@
 use std::io::Write;
+use std::io::{self, *};
+use std::net::TcpStream;
+use std::sync::mpsc::{channel, Sender};
 use std::thread;
-use std::net::{Shutdown, SocketAddr, TcpStream};
-use std::time::Duration;
 extern crate openssl;
 extern crate rand;
 extern crate rustc_serialize;
-use crypto_utils::Crypto;
-use std::io::*;
-const LOCAL: &str = "127.0.0.1:6000";
+use crypto_utils::{Crypto, PrimeDiffieHellman};
+const LOCAL: &str = "127.0.0.1:4040";
 
-pub struct Chat {
+pub struct EncryptedStream {
     socket: TcpStream,
     crypto: crypto_utils::PrimeDiffieHellman,
 }
 
-impl Chat {
-    pub fn new(socket: TcpStream) -> Chat {
-        Chat {
-            socket,
-            crypto: crypto_utils::PrimeDiffieHellman::new(),
-        }
-    }
+impl EncryptedStream {
+    pub fn establish(mut socket: TcpStream) -> io::Result<Self> {
+        let mut crypto = PrimeDiffieHellman::new();
 
-    pub fn receive_message(&mut self) -> [u8; 256] {
-        let mut data = [0 as u8; 256]; // using 256 byte buffer
-        match self.socket.read(&mut data) {
-            Ok(_) => {
-                return data;
-            }
-            Err(e) => {
-                println!("Failed to receive data: {}", e);
-                return data;
-            }
-        }
-    }
-
-    pub fn decrypt_msg(&self, ciphertext: &[u8]) -> String {
-        let message = self.crypto.decrypt(ciphertext);
-        let mut output = std::str::from_utf8(&message).unwrap();
-        return output.to_string();
-    }
-
-    pub fn receive(&mut self) {
-        let mut data = [0 as u8; 256]; // using 256 byte buffer
-        match self.socket.read(&mut data) {
-            Ok(_) => {
-                let message = self.decrypt_msg(&data);
-                println!("Client Received: {}", &message.to_string());
-                let mut line = String::new();
-                match std::io::stdin().read_line(&mut line).unwrap() {
-                    0 => assert!(true),
-                    _ => {
-                        println!("Client Sent: {}", &line);
-                        self.send(&line);
-                    }
-                }
-            }
-            Err(e) => {
-                println!("Failed to receive data: {}", e);
-            }
-        }
-    }
-
-    pub fn send(&mut self, line: &str) {
-        let mut msg_bytes: Vec<u8> = line.as_bytes().to_vec();
-        msg_bytes.push(line.len() as u8); // add data length
-        let encrypted_msg = self.crypto.encrypt(&msg_bytes);
-        self.socket.write(&encrypted_msg).unwrap();
-        return;
-    }
-
-    pub fn dh_handshake(&mut self) {
-        let mut ga_wire = {
-            let mut data = [0 as u8; 16]; // using 16 byte buffer
-            self.socket.read(&mut data);
+        let b_bytes = {
+            let mut data = [0_u8; 16]; // using 16 byte buffer
+            socket.read_exact(&mut data)?;
             data
         };
-        let ga = self.crypto.deserialize(&ga_wire);
-        let (mut priv_key, pubkey) = self.crypto.generate_keys();
-        self.socket.write(&pubkey.to_vec()).unwrap();
-        self.crypto.handshake(&mut priv_key, &ga);
+
+        let other_pub_key = crypto.deserialize(&b_bytes);
+        let (priv_key, pubkey) = crypto.generate_keys();
+        socket.write_all(&pubkey.to_vec())?;
+
+        crypto.handshake(&priv_key, &other_pub_key);
         println!("Handshake complete!");
+
+        Ok(EncryptedStream { socket, crypto })
+    }
+
+    pub fn send(&mut self, msg: &str) -> io::Result<()> {
+        let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
+        msg_bytes.push(msg_bytes.len() as u8); // add data length
+        let encrypted_msg = self.crypto.encrypt(&msg_bytes);
+        self.socket.write_all(&encrypted_msg)?;
+        Ok(())
+    }
+
+    pub fn try_clone(&self) -> io::Result<Self> {
+        let socket = self.socket.try_clone()?;
+
+        Ok(EncryptedStream {
+            socket,
+            crypto: self.crypto.clone(),
+        })
+    }
+
+    pub fn receive(&mut self) -> io::Result<Option<String>> {
+        let raw = Self::receive_raw(&mut self.socket)?;
+        let message = self.crypto.decrypt(&raw);
+        let txt = std::str::from_utf8(&message)
+            .ok()
+            .map(str::trim)
+            .map(String::from);
+        println!("Received: {:?}", &txt);
+        Ok(txt)
+    }
+
+    fn receive_raw(socket: &mut TcpStream) -> io::Result<Vec<u8>> {
+        let mut data = vec![0_u8; 256]; // using 256 byte buffer
+        socket.read(&mut data).map(|_| data)
+    }
+}
+
+fn connect(channel: Sender<Message>) -> io::Result<()> {
+    println!("Connecting to {}", LOCAL);
+    let socket = match TcpStream::connect(LOCAL) {
+        Ok(socket) => socket,
+        Err(e) => panic!("could not connect to server: {}", e),
+    };
+
+    let enc_stream = EncryptedStream::establish(socket)?;
+
+    let server_stream = enc_stream.try_clone()?;
+    let stdin_server = enc_stream.try_clone()?;
+    thread::spawn(move || handle_stream_server(server_stream, channel));
+    thread::spawn(move || handle_stream_stdin(stdin_server));
+
+    Ok(())
+}
+
+enum Message {
+    Disconnected,
+    Text(String),
+}
+
+fn handle_stream_server(
+    mut enc_stream: EncryptedStream,
+    channel: Sender<Message>,
+) -> io::Result<()> {
+    loop {
+        let msg = match enc_stream.receive() {
+            Ok(Some(txt)) => Message::Text(txt),
+            Err(_) => Message::Disconnected,
+            _ => {
+                // ignored
+                continue;
+            }
+        };
+
+        channel.send(msg).unwrap();
+    }
+}
+
+fn handle_stream_stdin(mut enc_stream: EncryptedStream) -> io::Result<()> {
+    loop {
+        let mut line = String::new();
+        match std::io::stdin().read_line(&mut line).unwrap() {
+            0 => continue,
+            _ => {
+                if let Err(e) = enc_stream.send(&line) {
+                    eprintln!("Error sending message to server: {:?}", e);
+                }
+                println!("Client Sent! {:?}", &line);
+            }
+        };
+    }
+}
+
+fn handle_msg(msg: Message) {
+    match msg {
+        Message::Disconnected => {
+            println!("disconnected\n");
+        }
+        Message::Text(txt) => {
+            println!("received: {}", txt);
+        }
     }
 }
 
 fn main() {
-    let stream = TcpStream::connect(LOCAL).expect("Could not connect to server");
-    let mut client = Chat::new(stream.try_clone().unwrap());
+    let (send, recv) = channel();
+    thread::spawn(move || connect(send));
 
-    client.dh_handshake();
-    loop {
-        client.receive();
+    while let Ok(msg) = recv.recv() {
+        handle_msg(msg)
     }
 }
