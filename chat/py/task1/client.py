@@ -31,7 +31,7 @@ class Chat(object):
                 # Read from stdin
                 message = sys.stdin.readline()
                 # Send the message to the server
-                if len(message) == 0 or message == "/quit\n":
+                if len(message) == 0:
                     # EOF
                     print("disconnecting...")
                     return
