@@ -1,10 +1,10 @@
+use crypto_utils::{Crypto, PrimeDiffieHellman};
+use std::env;
 use std::io::Write;
 use std::io::{self, *};
 use std::net::TcpStream;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
-use crypto_utils::{Crypto, PrimeDiffieHellman};
-const LOCAL: &str = "127.0.0.1:4040";
 
 pub struct EncryptedStream {
     socket: TcpStream,
@@ -73,77 +73,15 @@ impl EncryptedStream {
     }
 }
 
-/* Spawn two threads for input from either stdin or the server */
-
-fn connect(channel: Sender<Message>) -> io::Result<()> {
-    println!("Connecting to {}", LOCAL);
-    let socket = match TcpStream::connect(LOCAL) {
-        Ok(socket) => socket,
-        Err(e) => panic!("could not connect to server: {}", e),
-    };
-
-    let enc_stream = EncryptedStream::establish(socket)?;
-
-    let server_stream = enc_stream.try_clone()?;
-    let stdin_server = enc_stream.try_clone()?;
-    thread::spawn(move || handle_stream_server(server_stream, channel));
-    thread::spawn(move || handle_stream_stdin(stdin_server));
-
-    Ok(())
-}
-
-enum Message {
-    Disconnected,
-    Text(String),
-}
-
-fn handle_stream_server(
-    mut enc_stream: EncryptedStream,
-    channel: Sender<Message>,
-) -> io::Result<()> {
-    loop {
-        let msg = match enc_stream.receive() {
-            Ok(Some(txt)) => Message::Text(txt),
-            Err(_) => Message::Disconnected,
-            _ => {
-                // ignored
-                continue;
-            }
-        };
-
-        channel.send(msg).unwrap();
-    }
-}
-
-fn handle_stream_stdin(mut enc_stream: EncryptedStream) -> io::Result<()> {
-    loop {
-        let mut line = String::new();
-        match std::io::stdin().read_line(&mut line).unwrap() {
-            0 => continue,
-            _ => {
-                if let Err(e) = enc_stream.send(&line) {
-                    eprintln!("Error sending message to server: {:?}", e);
-                }
-                println!("Client Sent! {:?}", &line);
-            }
-        };
-    }
-}
-
-fn handle_msg(msg: Message) {
-    match msg {
-        Message::Disconnected => {
-            println!("disconnected\n");
-        }
-        Message::Text(txt) => {
-            println!("received: {}", txt);
-        }
-    }
-}
-
 fn main() {
     let (send, recv) = channel();
-    thread::spawn(move || connect(send));
+
+    let args: Vec<String> = env::args().collect();
+    let ip = &args[1];
+    let port = &args[2];
+    let address = format!("{}:{}", ip, port);
+
+    thread::spawn(move || connect(send, &address));
 
     while let Ok(msg) = recv.recv() {
         handle_msg(msg)

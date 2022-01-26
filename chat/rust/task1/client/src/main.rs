@@ -1,14 +1,10 @@
+use crypto_utils::{Crypto, PrimeDiffieHellman};
+use std::env;
 use std::io::Write;
 use std::io::{self, *};
-use std::env;
 use std::net::TcpStream;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
-extern crate openssl;
-extern crate rand;
-extern crate rustc_serialize;
-use crypto_utils::{Crypto, PrimeDiffieHellman};
-const LOCAL: &str = "127.0.0.1:4040";
 
 pub struct EncryptedStream {
     socket: TcpStream,
