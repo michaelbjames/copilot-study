@@ -2,6 +2,7 @@
 
 import socket
 import sys
+from typing import Optional
 import threading
 
 import crypto
@@ -42,7 +43,7 @@ class ClientConnection(object):
         msg_bytes = msg.encode()
         self.conn.send(self.crypto.encrypt(msg_bytes))
 
-    def recv_message(self):
+    def recv_message(self) -> Optional[str]:
         """
         Returns a decrypted message string or None if the decryption failed.
         """
@@ -75,6 +76,26 @@ class Server(object):
         if client_conn.username in self.username_list:
             self.username_list.remove(client_conn.username)
         del self.client_conns[client_conn.addr]
+
+    def send_all(self, msg:str):
+        # TODO1: Send a message to all connected clients
+        pass
+
+    def negotiate_username(self, client_conn:ClientConnection):
+        # TODO2: Implement the username negotiation.
+        pass
+
+    def handle_msg(self, client_conn:ClientConnection, msg:str):
+        # TODO3: Handle a message from a client
+        pass
+
+    def run_client(self, client_conn:ClientConnection):
+        # TODO4: Onboard a client and continuously handle messages from it.
+        pass
+
+    def run(self):
+        # TODO5: Implement the server's main loop.
+        pass
 
 
 
