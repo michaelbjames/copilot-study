@@ -144,10 +144,7 @@ fn handle_msg(msg: Message) {
 fn main() {
     let (send, recv) = channel();
 
-    let args: Vec<String> = env::args().collect();
-    let ip = &args[1];
-    let port = &args[2];
-    let address = format!("{}:{}", ip, port);
+    //Training task
 
     thread::spawn(move || connect(send, &address));
 
