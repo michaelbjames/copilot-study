@@ -34,14 +34,22 @@ impl PrimeDiffieHellman {
         }
     }
 
+    // Generate a random key
     fn gen_priv_key(&self) -> BigUint {
         // TODO
     }
 
+    // Generate a public key from a private key
     fn gen_pub_key(&self, priv_key: &BigUint) -> BigUint {
         // TODO
     }
 
+    /**
+     * Generate a key for the handshake.
+     *
+     * This is a helper function that generates a key for the Diffie-Hellman
+     * handshake.
+     */
     fn compute_shared_secret(&self, priv_key: &BigUint, other_pub_key: &BigUint) -> BigUint {
         // TODO
     }
@@ -61,7 +69,11 @@ impl Crypto for PrimeDiffieHellman {
         buffer
     }
 
-    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+    /** Encrypt a message using the shared secret.
+        Input: message: bytes
+        Output: ciphertext: bytes
+    */
+        fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
         let mut encryptvec: Vec<u8> = plaintext.to_vec();
         let mut ciphertext = vec![0; plaintext.len() + self.cipher.block_size()];
         let mut crypter = Crypter::new(self.cipher, Mode::Encrypt, &self.key, None).unwrap();
@@ -75,6 +87,10 @@ impl Crypto for PrimeDiffieHellman {
         ciphertext
     }
 
+    /** Decrypt a message using the shared secret.
+        Input: cipherbytes: bytes
+        Output: message: bytes or None if the message is empty
+     */
     fn decrypt(&self, data: &[u8]) -> Vec<u8> {
         let mut decrypted = Crypter::new(self.cipher, Mode::Decrypt, &self.key, None).unwrap();
         let mut output = vec![0_u8; data.len() + self.cipher.block_size()];
@@ -98,6 +114,10 @@ impl Crypto for PrimeDiffieHellman {
         }
     }
 
+    /** Generate a shared secret using the private key and the public key of the other party.
+        Input: priv_key: BigUint, other_pub_key: BigUint
+        Output: shared_secret: BigUint
+    */
     fn handshake(&mut self, priv_key: &BigUint, other_pub_key: &BigUint) {
         let shared_secret = self.compute_shared_secret(priv_key, other_pub_key);
         let shared_key = self.pad_be(&shared_secret);
@@ -116,6 +136,9 @@ impl Crypto for PrimeDiffieHellman {
         self.key = *key;
     }
 
+    /**
+     * function to generate a keypair of private and public key
+     */
     fn generate_keys(&self) -> (BigUint, KeyBytes) {
         let priv_key = self.gen_priv_key();
         let pub_key = self.gen_pub_key(&priv_key);

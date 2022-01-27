@@ -12,10 +12,8 @@ pub struct EncryptedStream {
 }
 
 impl EncryptedStream {
-    /** Complete the Diffie-Hellman handshake
-        Return the key as bytes.
-        Output must be 16 bytes long. (for a 128-bit AES key)
-    */
+    /** Complete the Diffie-Hellman handshake before sending any data. */
+
     pub fn establish(mut socket: TcpStream) -> io::Result<Self> {
         let mut crypto = PrimeDiffieHellman::new();
 
@@ -43,15 +41,6 @@ impl EncryptedStream {
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
         self.socket.write_all(&encrypted_msg)?;
         Ok(())
-    }
-
-    pub fn try_clone(&self) -> io::Result<Self> {
-        let socket = self.socket.try_clone()?;
-
-        Ok(EncryptedStream {
-            socket,
-            crypto: self.crypto.clone(),
-        })
     }
 
     /* Receive a message from the server and decrypt */

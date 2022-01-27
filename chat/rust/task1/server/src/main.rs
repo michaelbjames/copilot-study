@@ -13,6 +13,9 @@ pub struct EncryptedStream {
 }
 
 impl EncryptedStream {
+
+    /** Complete the Diffie-Hellman handshake before sending any data. */
+
     pub fn establish(mut socket: TcpStream) -> io::Result<Self> {
         let mut crypto = PrimeDiffieHellman::new();
 
@@ -32,11 +35,15 @@ impl EncryptedStream {
         Ok(EncryptedStream { socket, crypto })
     }
 
+    /** Close connection with client */
+
     pub fn close(&mut self) {
         if let Err(e) = self.socket.shutdown(Shutdown::Both) {
             eprintln!("Error shutting down socket: {:?}", e);
         }
     }
+
+    /** Send an encrypted message to the connected client. */
 
     pub fn send(&mut self, msg: &str) -> io::Result<()> {
         let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
@@ -47,6 +54,8 @@ impl EncryptedStream {
         Ok(())
     }
 
+    /** Clone the tcp stream, this function can be used to generate separate streams for each connected client  */
+
     pub fn try_clone(&self) -> io::Result<Self> {
         let socket = self.socket.try_clone()?;
 
@@ -55,6 +64,8 @@ impl EncryptedStream {
             crypto: self.crypto.clone(),
         })
     }
+
+    /** Receive an encrypted message from the connected client and decrypt it */
 
     pub fn recv(&mut self) -> io::Result<Option<String>> {
         let raw = Self::receive_raw(&mut self.socket)?;
@@ -75,6 +86,7 @@ impl EncryptedStream {
 
 fn accept(channel: Sender<(SocketAddr, Message)>) {
     loop {
+        // Accept connections and process them, spawning a new thread for each one
         let socket = match TcpListener::bind(LOCAL) {
             Ok(socket) => socket,
             Err(e) => panic!("could not read start TCP listener: {}", e),
