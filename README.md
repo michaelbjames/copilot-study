@@ -78,18 +78,18 @@ All other commands are invalid, and their behavior is unspecified.
 ## Crypto Library
 The `Crypto` class encapsulates all the encryption functionality. It provides 4 methods:
 
-- `init_keys`: The first of a two-part procedure to generate the shared secret. 
+- `init_keys`: The first of a two-part procedure to generate the shared secret.
   This method generates a pair of a public and private key.
   It returns the public key and stores the private key internally.
 - `handshake`: The second part of the procedure to generate the shared secret.
   This method takes a public key **from the other party**
   and combines it with the previously generated private key.
   The resulting shared secret is stored internally.
-  After calling this method, you can call `encrypt` and `decrypt` 
+  After calling this method, you can call `encrypt` and `decrypt`
   to communicate securely with the party whose public key was used in this step.
-- `encrypt`: This method takes a message as bytes and encrypts it. 
+- `encrypt`: This method takes a message as bytes and encrypts it.
   It returns a ciphertext as bytes.
-- `decrypt`: This method takes a ciphertext as bytes 
+- `decrypt`: This method takes a ciphertext as bytes
   and returns a message as bytes.
 
 ## Running the application
@@ -110,15 +110,28 @@ While implementing these tasks, you're welcome to (but not required to):
 - Look on the internet for API information / stackoverflow
 - Write tests
 - Write extra functions or classes
-- Rename the solution files so you can test your work (e.g., renaming
-  `crypto.py` and `task_crypto.py` so you can test your crypto work with the
-  solution client/server).
 - Run the solutions to test against (e.g., testing your client against the
   solution server)
 
 Please DON'T:
 - read the solution code. It's in the same directory as your tasks so you can
   test against them, and use the solutions in your imports.
+
+## Training Task
+This task is meant to familiarize you with Copilot, and how you might interact
+with it. You task is to write the main function of the client chat application.
+The main function should read in the two arguments from the command line: the
+hostname and the port number. It does not need to actually do any networking,
+just print out the hostname and the port. If both are not supplied, the main
+function should show the usage message.
+
+```
+$ python client localhost 4040
+Connecting to localhost:4040
+
+$ python client
+Usage: client.py host port
+```
 
 ## Task 1 Implement the Server
 You need to implement the server. It should be listening for connections on port
