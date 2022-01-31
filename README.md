@@ -75,23 +75,6 @@ The following are the supported commands and their effect:
 
 All other commands are invalid, and their behavior is unspecified.
 
-## Crypto Library
-The `Crypto` class encapsulates all the encryption functionality. It provides 4 methods:
-
-- `init_keys`: The first of a two-part procedure to generate the shared secret.
-  This method generates a pair of a public and private key.
-  It returns the public key and stores the private key internally.
-- `handshake`: The second part of the procedure to generate the shared secret.
-  This method takes a public key **from the other party**
-  and combines it with the previously generated private key.
-  The resulting shared secret is stored internally.
-  After calling this method, you can call `encrypt` and `decrypt`
-  to communicate securely with the party whose public key was used in this step.
-- `encrypt`: This method takes a message as bytes and encrypts it.
-  It returns a ciphertext as bytes.
-- `decrypt`: This method takes a ciphertext as bytes
-  and returns a message as bytes.
-
 ## Running the application
 
 ### Server
@@ -161,6 +144,24 @@ Server(to all but Client 1): MySuperCoolUsername: Hello!
 
 ## Task 2 Implement DiffieHellman Key Exchange
 The crypto library needs to be implemented.
+
+## Crypto Library
+The `Crypto` class encapsulates all the encryption functionality. It provides 4 methods:
+
+- `init_keys`: The first of a two-part procedure to generate the shared secret.
+  This method generates a pair of a public and private key.
+  It returns the public key and stores the private key internally.
+- `handshake`: The second part of the procedure to generate the shared secret.
+  This method takes a public key **from the other party**
+  and combines it with the previously generated private key.
+  The resulting shared secret is stored internally.
+  After calling this method, you can call `encrypt` and `decrypt`
+  to communicate securely with the party whose public key was used in this step.
+- `encrypt`: This method takes a message as bytes and encrypts it.
+  It returns a ciphertext as bytes.
+- `decrypt`: This method takes a ciphertext as bytes
+  and returns a message as bytes.
+
 The `Crypto` class has stubs for unimplemented methods that are called by the
 interface functions. The unimplemented methods will implement the
 diffie-hellman key exchange math.
