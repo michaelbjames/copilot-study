@@ -42,7 +42,7 @@ impl EncryptedStream {
         let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
         msg_bytes.push(msg_bytes.len() as u8); // add data length
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
-        self.socket.write_all(&encrypted_msg)?;
+        self.socket.write(&encrypted_msg)?;
         println!("Sent: {}", &msg);
         Ok(())
     }
@@ -81,7 +81,7 @@ enum Message {
 
 fn accept(channel: Sender<(SocketAddr, Message)>) {
     loop {
-        let socket = match TcpListener::bind(LOCAL) {
+            let socket = match TcpListener::bind(LOCAL) {
             Ok(socket) => socket,
             Err(e) => panic!("could not read start TCP listener: {}", e),
         };
@@ -207,10 +207,13 @@ impl ChatServer {
             if msg == "/quit" {
                 client.stream.close();
                 self.clients.remove(&addr);
+
             } else if msg == "/list" {
                 for (_client_addr, client) in self.clients.iter_mut() {
                     client.send(&format!("Client username: {:?}", client.username));
+                    client.send(&format!("Client address: {:?}", client.stream.socket.peer_addr()));
                 }
+
             } else if msg == "/help" {
                 client.send(
                     "
@@ -238,6 +241,8 @@ impl ChatServer {
 }
 
 fn main() {
+
+    // Create a channel to send messages to the server
     let (send, recv) = channel();
     thread::spawn(move || accept(send));
 

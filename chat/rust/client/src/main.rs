@@ -21,7 +21,7 @@ impl EncryptedStream {
 
         let b_bytes = {
             let mut data = [0_u8; 16]; // using 16 byte buffer
-            socket.read_exact(&mut data)?;
+            socket.read(&mut data)?;
             data
         };
 
@@ -41,7 +41,7 @@ impl EncryptedStream {
         let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
         msg_bytes.push(msg_bytes.len() as u8); // add data length
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
-        self.socket.write_all(&encrypted_msg)?;
+        self.socket.write(&encrypted_msg)?;
         Ok(())
     }
 
@@ -76,6 +76,8 @@ impl EncryptedStream {
 /* Spawn two threads for input from either stdin or the server */
 
 fn connect(channel: Sender<Message>) -> io::Result<()> {
+    let mut c = vec![];
+
     println!("Connecting to {}", LOCAL);
     let socket = match TcpStream::connect(LOCAL) {
         Ok(socket) => socket,
@@ -86,8 +88,13 @@ fn connect(channel: Sender<Message>) -> io::Result<()> {
 
     let server_stream = enc_stream.try_clone()?;
     let stdin_server = enc_stream.try_clone()?;
-    thread::spawn(move || handle_stream_server(server_stream, channel));
-    thread::spawn(move || handle_stream_stdin(stdin_server));
+
+    c.push(thread::spawn(move || handle_stream_server(server_stream, channel)));
+    c.push(thread::spawn(move || handle_stream_stdin(stdin_server)));
+
+    for t in c {
+        t.join(); // waits for associated threads to finish
+    }
 
     Ok(())
 }
