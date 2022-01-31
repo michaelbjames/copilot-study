@@ -97,16 +97,7 @@ fn accept(channel: Sender<(SocketAddr, Message)>) {
             Ok(socket) => socket,
             Err(e) => panic!("could not read start TCP listener: {}", e),
         };
-
-        // TODO1: accept incoming connections and spawn a new thread for each one
-
     }
-}
-
-fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> io::Result<()> {
-    let addr = socket.peer_addr()?; // get the address of the client
-    // TODO2: establish a new Diffie-Hellman handshake with the client and begin receiving messages
-
 }
 
 struct ClientConnection {
@@ -131,26 +122,6 @@ impl ChatServer {
     pub fn new() -> Self {
         Default::default()
     }
-
-    fn handle_msg(&mut self, addr: SocketAddr, msg: Message) {
-        //TODO3: handle incoming messages, prompt for 'enter username'
-
-    }
-
-    pub fn handle_chat_msg(&mut self, addr: SocketAddr, msg: &str) {
-        //TODO4: handle the chat commands and send the chat messages to all other clients.
-    }
-
 }
 
-fn main() {
-
-    // Create a channel to send messages to the server
-    let (send, recv) = channel();
-    thread::spawn(move || accept(send));
-
-    let mut server = ChatServer::new();
-    while let Ok((addr, msg)) = recv.recv() {
-        server.handle_msg(addr, msg)
-    }
-}
+fn main() {}
