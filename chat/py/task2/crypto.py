@@ -19,6 +19,37 @@ class Crypto(object):
         self.p = 997
         self.g = 2
 
+    def _gen_priv_key(self) -> int:
+        # TODO
+        NotImplementedError()
+
+    def _mk_pub_key(self, priv_key:int) -> int:
+        # TODO
+        NotImplementedError()
+
+    def _compute_shared_secret(self, priv_key:int, other_pub_key:int) -> int:
+        # TODO
+        NotImplementedError()
+
+    @staticmethod
+    def _serialize_key(pub_key:int) -> bytes:
+        """
+        Input: a public key to be sent to the other party
+        Output: a string representing the public key, in bytes
+        """
+        # TODO
+        NotImplementedError()
+
+    @staticmethod
+    def _deserialize_key(pub_key_str:bytes) -> int:
+        # TODO
+        """
+        Input: bytes representing a public key as a string.
+        Output: a public key int
+        """
+        NotImplementedError()
+
+
     def encrypt(self, message:bytes) -> bytes:
         """
         Encrypt a message using the shared secret.
@@ -63,31 +94,6 @@ class Crypto(object):
         self.aes_secret = shared_secret.to_bytes(DH_MESSAGE_SIZE_BYTES, byteorder=BYTE_ORDER)
         self._init_cipher(self.aes_secret)
         return
-
-    def _gen_priv_key(self) -> int:
-        NotImplementedError()
-
-    def _mk_pub_key(self, priv_key:int) -> int:
-        NotImplementedError()
-
-    def _compute_shared_secret(self, priv_key:int, other_pub_key:int) -> int:
-        NotImplementedError()
-
-    @staticmethod
-    def _serialize_key(pub_key:int) -> bytes:
-        """
-        Input: a public key to be sent to the other party
-        Output: a string representing the public key, in bytes
-        """
-        NotImplementedError()
-
-    @staticmethod
-    def _deserialize_key(pub_key_str:bytes) -> int:
-        """
-        Input: bytes representing a public key as a string.
-        Output: a public key int
-        """
-        NotImplementedError()
 
     def _init_cipher(self, key) -> None:
         self.cipher = AES.new(key, AES.MODE_ECB)

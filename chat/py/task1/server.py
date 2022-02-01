@@ -8,13 +8,57 @@ import threading
 import crypto
 
 PORT_NUMBER = 4040
-MESSAGE_SIZE_BYTES = 2048
+
+class Server(object):
+    def __init__(self):
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.bind(('localhost', PORT_NUMBER))
+            self.sock.listen(1)
+            self.client_conns = {}
+            self.username_list = set()
+        except OSError as e:
+            print("Could not create socket: {}".format(e))
+            sys.exit(1)
+
+    def run_client(self, client_conn):
+        # TODO
+        pass
+
+    def run(self):
+       while True:
+            # Wait for a connection, add it to a list of connections.
+            # Select between existing sockets and handle that socket.
+            # if it is a new socket, do the handshake, negotiate username,
+            # and add it to the list of connections.
+            (connection,src) = self.sock.accept()
+            try:
+                client_conn = ClientConnection(connection, src)
+                self.client_conns[src] = {
+                    "client": client_conn,
+                    "thread": threading.Thread(target=self.run_client, args=(client_conn,))
+                }
+                self.client_conns[src]["thread"].start()
+            except Exception as e:
+                print(e)
+                connection.close()
+                del self.client_conns[src]
+
+    def close_connection(self, client_conn):
+        print("Connection closed from {}".format(client_conn.addr))
+        client_conn.conn.close()
+        if client_conn.username in self.username_list:
+            self.username_list.remove(client_conn.username)
+        del self.client_conns[client_conn.addr]
+
 
 def main():
     server = Server()
     server.run()
 
 class ClientConnection(object):
+    MESSAGE_SIZE_BYTES = 2048
+
     def __init__(self, conn, addr):
         self.conn = conn
         self.addr = addr
@@ -22,10 +66,15 @@ class ClientConnection(object):
         self.crypto = crypto.Crypto()
 
     def do_dh_handshake(self):
+        """
+        Performs Diffie-Hellman key exchange with the client.
+        It establishes the shared secret so that send_message and recv_message
+        can be used to securely communicate with the client.
+        """
         try:
             pubkey = self.crypto.init_keys()
             self.conn.send(pubkey)
-            b_repr = self.conn.recv(MESSAGE_SIZE_BYTES)
+            b_repr = self.conn.recv(ClientConnection.MESSAGE_SIZE_BYTES)
             self.crypto.handshake(b_repr)
         except ValueError as e:
             print("Error in DH handshake: {}".format(e))
@@ -48,7 +97,7 @@ class ClientConnection(object):
         Returns a decrypted message string or None if the decryption failed.
         """
         try:
-            ciphertext = self.conn.recv(MESSAGE_SIZE_BYTES)
+            ciphertext = self.conn.recv(ClientConnection.MESSAGE_SIZE_BYTES)
             message = self.crypto.decrypt(ciphertext)
             if message is None:
                 return None
@@ -56,47 +105,6 @@ class ClientConnection(object):
         except ValueError as e:
             print("Error decrypting message: {}".format(e))
             return None
-
-
-class Server(object):
-    def __init__(self):
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.bind(('localhost', PORT_NUMBER))
-            self.sock.listen(1)
-            self.client_conns = {}
-            self.username_list = set()
-        except OSError as e:
-            print("Could not create socket: {}".format(e))
-            sys.exit(1)
-
-    def close_connection(self, client_conn):
-        print("Connection closed from {}".format(client_conn.addr))
-        client_conn.conn.close()
-        if client_conn.username in self.username_list:
-            self.username_list.remove(client_conn.username)
-        del self.client_conns[client_conn.addr]
-
-    def send_all(self, msg:str):
-        # TODO1: Send a message to all connected clients
-        pass
-
-    def negotiate_username(self, client_conn:ClientConnection):
-        # TODO2: Implement the username negotiation.
-        pass
-
-    def handle_msg(self, client_conn:ClientConnection, msg:str):
-        # TODO3: Handle a message from a client
-        pass
-
-    def run_client(self, client_conn:ClientConnection):
-        # TODO4: Onboard a client and continuously handle messages from it.
-        pass
-
-    def run(self):
-        # TODO5: Implement the server's main loop.
-        pass
-
 
 
 if __name__ == '__main__':
