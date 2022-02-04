@@ -27,10 +27,10 @@ class Server(object):
 
     def run(self):
        while True:
-            # Wait for a connection, add it to a list of connections.
-            # Select between existing sockets and handle that socket.
-            # if it is a new socket, do the handshake, negotiate username,
-            # and add it to the list of connections.
+            # Wait for a connection, add it to a dictionary of connections,
+            # keyed by the address of the client.
+            # Spin that connection off to another thread to do the handshake,
+            # negotiate the username, and listen for incoming messages.
             (connection,src) = self.sock.accept()
             try:
                 client_conn = ClientConnection(connection, src)
