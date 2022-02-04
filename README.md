@@ -97,8 +97,7 @@ While implementing these tasks, you're welcome to (but not required to):
   solution server)
 
 Please DON'T:
-- read the solution code. It's in the same directory as your tasks so you can
-  test against them, and use the solutions in your imports.
+- read the code of other tasks.
 
 ## Training Task
 This task is meant to familiarize you with Copilot, and how you might interact
@@ -115,6 +114,7 @@ Connecting to localhost:4040
 $ python client
 Usage: client.py host port
 ```
+It doesn't do anything other than print out the two arguments it was given. :-)
 
 ## Task 1 Implement the Server
 You need to implement the server. It should be listening for connections on port
