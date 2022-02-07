@@ -64,7 +64,6 @@ class Server(object):
             self.sock.bind(('localhost', PORT_NUMBER))
             self.sock.listen(1)
             self.client_conns = {}
-            self.username_list = set()
         except OSError as e:
             print("Could not create socket: {}".format(e))
             sys.exit(1)
@@ -94,19 +93,17 @@ class Server(object):
         if username is None:
             return None
         username = username.strip()
-        if username in self.username_list:
-            client_conn.send_message("Username already taken. Try again.")
-            return self.negotiate_username(client_conn)
+        for _, client_data in self.client_conns.items():
+            if username == client_data["client"].username:
+                client_conn.send_message("Username already taken. Try again.")
+                return self.negotiate_username(client_conn)
         else:
             client_conn.username = username
-            self.username_list.add(username)
             return username
 
     def close_connection(self, client_conn):
         print("Connection closed from {}".format(client_conn.addr))
         client_conn.conn.close()
-        if client_conn.username in self.username_list:
-            self.username_list.remove(client_conn.username)
         del self.client_conns[client_conn.addr]
 
     def send_all(self, msg):
@@ -122,7 +119,8 @@ class Server(object):
                 self.close_connection(client_conn)
                 return
             elif msg == "/list":
-                client_conn.send_message("\n".join(self.username_list) + "\n")
+                username_list = [client['client'].username for client in self.client_conns.values()]
+                client_conn.send_message("\n".join(username_list) + "\n")
                 return
             elif msg == "/help":
                 client_conn.send_message("""

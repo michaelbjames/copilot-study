@@ -16,7 +16,6 @@ class Server(object):
             self.sock.bind(('localhost', PORT_NUMBER))
             self.sock.listen(1)
             self.client_conns = {}
-            self.username_list = set()
         except OSError as e:
             print("Could not create socket: {}".format(e))
             sys.exit(1)

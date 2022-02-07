@@ -45,16 +45,15 @@ There are three main components to this application:
 - The crypto library: both client and server rely on this library to encrypt and decrypt messages.
 
 ## Running the application
-See the application in action:
 
 ### Server
 The server needs to be running first and can be invoked with:
-- Python: `chat/py/solution$ python3 server.py`
+- Python: `chat/py/task<n>$ python3 server.py`
 - Rust: `chat/rust/server$ cargo run`
 
 ### Client
 The client can be called with:
-- Python: `chat/py/solution$ python3 client.py localhost 4040`
+- Python: `chat/py/task<n>$ python3 client.py localhost 4040`
 - Rust: `chat/rust/client$ cargo run localhost 4040`
 
 You'll need to run multiple clients to see the chat room in action.
@@ -70,6 +69,7 @@ While implementing these tasks, you're welcome to (but not required to):
 
 Please DON'T:
 - read the code of other tasks.
+- read the solution code (under the `solution` directory in python)
 
 ## Training Task
 This task is meant to familiarize you with Copilot, and how you might interact
