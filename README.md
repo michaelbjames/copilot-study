@@ -99,10 +99,9 @@ As an example exchange:
 ```
 Server: listening...
 Client 1: <connects>
-Server: <handshake: sends its public-key>
-Client 1: <handshake: sends its public-key>
 -⬆️  handled for you  ⬆️-
 -⬇️ to be implemented ⬇️-
+Server/Client 1: <handshake>
 Server(encrypted to Client 1): Please pick a username:
 Client 1: MySuperCoolUsername
 Server(to all): Welcome MySuperCoolUsername!
@@ -123,7 +122,7 @@ The following are the supported commands and their effect:
 All other commands are invalid, and their behavior is unspecified.
 
 
-**You need to implement the function `handle_msg` with the TODO under
+**You need to implement the function `run_client/_RUST_EQUIV_` (python/rust) with the TODO under
 `task1/server`**. The networking logic has already been implemented for you.
 This function takes a message and which client sent it, it then deals with the
 message according to the server specification above.
