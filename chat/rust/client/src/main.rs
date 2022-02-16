@@ -1,9 +1,9 @@
+use crypto_utils::{Crypto, PrimeDiffieHellman};
 use std::io::Write;
 use std::io::{self, *};
 use std::net::TcpStream;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
-use crypto_utils::{Crypto, PrimeDiffieHellman};
 const LOCAL: &str = "127.0.0.1:4040";
 
 pub struct EncryptedStream {
@@ -89,7 +89,9 @@ fn connect(channel: Sender<Message>) -> io::Result<()> {
     let server_stream = enc_stream.try_clone()?;
     let stdin_server = enc_stream.try_clone()?;
 
-    c.push(thread::spawn(move || handle_stream_server(server_stream, channel)));
+    c.push(thread::spawn(move || {
+        handle_stream_server(server_stream, channel)
+    }));
     c.push(thread::spawn(move || handle_stream_stdin(stdin_server)));
 
     for t in c {

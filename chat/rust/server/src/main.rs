@@ -81,7 +81,7 @@ enum Message {
 
 fn accept(channel: Sender<(SocketAddr, Message)>) {
     loop {
-            let socket = match TcpListener::bind(LOCAL) {
+        let socket = match TcpListener::bind(LOCAL) {
             Ok(socket) => socket,
             Err(e) => panic!("could not read start TCP listener: {}", e),
         };
@@ -175,11 +175,10 @@ impl ChatServer {
                 // Negotiating username
                 if username == None {
                     // user name is taken
-                    let is_unique = self
+                    let is_unique = !self
                         .clients
                         .values()
-                        .find(move |c| c.username.as_ref() == Some(&txt))
-                        .is_none();
+                        .any(move |c| c.username.as_ref() == Some(&txt));
                     let client = self
                         .clients
                         .get_mut(&addr)
@@ -202,19 +201,22 @@ impl ChatServer {
             return;
         }
         if msg.starts_with('/') {
-            let client = self.clients.get_mut(&addr).unwrap();
-
             if msg == "/quit" {
+                let client = self.clients.get_mut(&addr).unwrap();
                 client.stream.close();
                 self.clients.remove(&addr);
-
             } else if msg == "/list" {
-                for (_client_addr, client) in self.clients.iter_mut() {
-                    client.send(&format!("Client username: {:?}", client.username));
-                    client.send(&format!("Client address: {:?}", client.stream.socket.peer_addr()));
-                }
-
+                let usernames = self
+                    .clients
+                    .iter()
+                    .map(|c| c.1.username.as_ref().unwrap())
+                    .collect::<Vec<&String>>();
+                let username_list = format!("Users: {:?}", usernames);
+                let client = self.clients.get_mut(&addr).unwrap();
+                client.send(&username_list);
             } else if msg == "/help" {
+                let client = self.clients.get_mut(&addr).unwrap();
+
                 client.send(
                     "
                     /quit - quit the chat
@@ -222,6 +224,8 @@ impl ChatServer {
                     /help - show this help message",
                 );
             } else {
+                let client = self.clients.get_mut(&addr).unwrap();
+
                 client.send("Invalid command! Type /help for help.\n");
             }
         } else {
@@ -241,7 +245,6 @@ impl ChatServer {
 }
 
 fn main() {
-
     // Create a channel to send messages to the server
     let (send, recv) = channel();
     thread::spawn(move || accept(send));

@@ -7,6 +7,40 @@ use std::thread;
 
 const LOCAL: &str = "127.0.0.1:4040";
 
+enum Message {
+    Connected(EncryptedStream),
+    Disconnected,
+    Text(String),
+}
+
+#[derive(Default)]
+struct ChatServer {
+    clients: HashMap<SocketAddr, ClientConnection>,
+}
+
+impl ChatServer {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    fn handle_msg(&mut self, addr: SocketAddr, msg: Message) {
+        //TODO
+    }
+}
+
+struct ClientConnection {
+    stream: EncryptedStream,
+    username: Option<String>,
+}
+
+impl ClientConnection {
+    fn send(&mut self, txt: &str) {
+        if let Err(e) = self.stream.send(txt) {
+            eprintln!("Error sending message to client: {:?}", e);
+        }
+    }
+}
+
 pub struct EncryptedStream {
     socket: TcpStream,
     crypto: PrimeDiffieHellman,
@@ -14,7 +48,7 @@ pub struct EncryptedStream {
 
 impl EncryptedStream {
 
-    /** Complete the Diffie-Hellman handshake before sending any data. */
+    // complete the Diffie-Hellman handshake before sending any data.
 
     pub fn establish(mut socket: TcpStream) -> io::Result<Self> {
         let mut crypto = PrimeDiffieHellman::new();
@@ -35,7 +69,7 @@ impl EncryptedStream {
         Ok(EncryptedStream { socket, crypto })
     }
 
-    /** Close connection with client */
+    // close connection with client
 
     pub fn close(&mut self) {
         if let Err(e) = self.socket.shutdown(Shutdown::Both) {
@@ -43,18 +77,18 @@ impl EncryptedStream {
         }
     }
 
-    /** Send an encrypted message to the connected client. */
+    // send an encrypted message to the connected client.
 
     pub fn send(&mut self, msg: &str) -> io::Result<()> {
         let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
         msg_bytes.push(msg_bytes.len() as u8); // add data length
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
-        self.socket.write_all(&encrypted_msg)?;
+        self.socket.write(&encrypted_msg)?;
         println!("Sent: {}", &msg);
         Ok(())
     }
 
-    /** Clone the tcp stream, this function can be used to generate separate streams for each connected client  */
+    // clone the tcp stream, this function can be used to generate separate streams for each connected client
 
     pub fn try_clone(&self) -> io::Result<Self> {
         let socket = self.socket.try_clone()?;
@@ -65,7 +99,7 @@ impl EncryptedStream {
         })
     }
 
-    /** Receive an encrypted message from the connected client and decrypt it */
+    // receive an encrypted message from the connected client and decrypt it
 
     pub fn recv(&mut self) -> io::Result<Option<String>> {
         let raw = Self::receive_raw(&mut self.socket)?;
@@ -84,44 +118,61 @@ impl EncryptedStream {
     }
 }
 
-enum Message {
-    Connected(EncryptedStream),
-    Disconnected,
-    Text(String),
-}
-
 fn accept(channel: Sender<(SocketAddr, Message)>) {
     loop {
-        // create a new socket to accept connections
-        let socket = match TcpListener::bind(LOCAL) {
+            // create a new socket to accept connections
+            let socket = match TcpListener::bind(LOCAL) {
             Ok(socket) => socket,
             Err(e) => panic!("could not read start TCP listener: {}", e),
         };
-    }
-}
 
-struct ClientConnection {
-    stream: EncryptedStream,
-    username: Option<String>,
-}
-
-impl ClientConnection {
-    fn send(&mut self, txt: &str) {
-        if let Err(e) = self.stream.send(txt) {
-            eprintln!("Error sending message to client: {:?}", e);
+        // accept connections and process them using separate threads
+        for stream in socket.incoming() {
+            match stream {
+                Ok(stream) => {
+                    let local_channel = channel.clone();
+                    thread::spawn(move || handle_stream(stream, local_channel));
+                }
+                Err(e) => {
+                    eprintln!("Accepting socket shutdown {}", e);
+                }
+            }
         }
     }
 }
 
-#[derive(Default)]
-struct ChatServer {
-    clients: HashMap<SocketAddr, ClientConnection>,
-}
+fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> io::Result<()> {
+    let addr = socket.peer_addr()?;
+    let mut enc_stream = EncryptedStream::establish(socket)?;
+    let foreign_stream = enc_stream.try_clone()?;
 
-impl ChatServer {
-    pub fn new() -> Self {
-        Default::default()
+    // notify the server that we've established a connection
+    channel
+        .send((addr, Message::Connected(foreign_stream)))
+        .unwrap();
+
+    loop {
+        let msg = match enc_stream.recv() {
+            Ok(Some(txt)) => Message::Text(txt),
+            Err(_) => Message::Disconnected,
+            _ => {
+                // ignored
+                continue;
+            }
+        };
+
+        channel.send((addr, msg)).unwrap();
     }
 }
 
-fn main() {}
+fn main() {
+
+    // create a channel to send messages to the server
+    let (send, recv) = channel();
+    thread::spawn(move || accept(send));
+
+    let mut server = ChatServer::new();
+    while let Ok((addr, msg)) = recv.recv() {
+        server.handle_msg(addr, msg)
+    }
+}
