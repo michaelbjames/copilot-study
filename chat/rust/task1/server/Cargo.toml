@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 crypto_utils = { path = "../crypto_utils" }
+encstream = { path = "../encstream" }

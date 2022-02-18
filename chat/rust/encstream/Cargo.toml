@@ -1,5 +1,5 @@
 [package]
-name = "server"
+name = "encstream"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,4 +7,6 @@ edition = "2021"
 
 [dependencies]
 crypto_utils = { path = "../crypto_utils" }
-encstream = { path = "../encstream" }
+
+[lib]
+path = "src/encstream.rs"
