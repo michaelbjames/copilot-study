@@ -3,6 +3,5 @@ members = [
     "client",
     "crypto_utils",
     "server",
-    "encstream",
-    "training"
+    "encstream"
 ]
