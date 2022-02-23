@@ -1,6 +1,6 @@
 use crypto_utils::{Crypto, PrimeDiffieHellman};
-use std::collections::HashMap;
 use encstream::EncryptedStream;
+use std::collections::HashMap;
 use std::io::{self, *};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Sender};

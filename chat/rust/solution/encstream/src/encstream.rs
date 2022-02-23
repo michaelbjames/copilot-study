@@ -1,7 +1,7 @@
 use crypto_utils::{Crypto, PrimeDiffieHellman};
 use std::collections::HashMap;
-use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::io::{self, *};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 
 pub struct EncryptedStream {
     socket: TcpStream,
@@ -9,7 +9,6 @@ pub struct EncryptedStream {
 }
 
 impl EncryptedStream {
-
     // complete the Diffie-Hellman handshake before sending any data.
 
     pub fn establish(mut socket: TcpStream) -> io::Result<Self> {
