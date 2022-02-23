@@ -43,15 +43,6 @@ impl EncryptedStream {
         Ok(())
     }
 
-    pub fn try_clone(&self) -> io::Result<Self> {
-        let socket = self.socket.try_clone()?;
-
-        Ok(EncryptedStream {
-            socket,
-            crypto: self.crypto.clone(),
-        })
-    }
-
     /* Receive a message from the server and decrypt */
 
     pub fn receive(&mut self) -> io::Result<Option<String>> {
@@ -68,74 +59,6 @@ impl EncryptedStream {
     fn receive_raw(socket: &mut TcpStream) -> io::Result<Vec<u8>> {
         let mut data = vec![0_u8; 256]; // using 256 byte buffer
         socket.read(&mut data).map(|_| data)
-    }
-}
-
-/* Spawn two threads for input from either stdin or the server */
-
-fn connect(channel: Sender<Message>, address: &str) -> io::Result<()> {
-    println!("Connecting to {}", address);
-    let socket = match TcpStream::connect(address) {
-        Ok(socket) => socket,
-        Err(e) => panic!("could not connect to server: {}", e),
-    };
-
-    let enc_stream = EncryptedStream::establish(socket)?;
-
-    let server_stream = enc_stream.try_clone()?;
-    let stdin_server = enc_stream.try_clone()?;
-    thread::spawn(move || handle_stream_server(server_stream, channel));
-    thread::spawn(move || handle_stream_stdin(stdin_server));
-
-    Ok(())
-}
-
-enum Message {
-    Disconnected,
-    Text(String),
-}
-
-fn handle_stream_server(
-    mut enc_stream: EncryptedStream,
-    channel: Sender<Message>,
-) -> io::Result<()> {
-    loop {
-        let msg = match enc_stream.receive() {
-            Ok(Some(txt)) => Message::Text(txt),
-            Err(_) => Message::Disconnected,
-            _ => {
-                // ignored
-                continue;
-            }
-        };
-
-        channel.send(msg).unwrap();
-    }
-}
-
-fn handle_stream_stdin(mut enc_stream: EncryptedStream) -> io::Result<()> {
-    loop {
-        let mut line = String::new();
-        match std::io::stdin().read_line(&mut line).unwrap() {
-            0 => continue,
-            _ => {
-                if let Err(e) = enc_stream.send(&line) {
-                    eprintln!("Error sending message to server: {:?}", e);
-                }
-                println!("Client Sent! {:?}", &line);
-            }
-        };
-    }
-}
-
-fn handle_msg(msg: Message) {
-    match msg {
-        Message::Disconnected => {
-            println!("disconnected\n");
-        }
-        Message::Text(txt) => {
-            println!("received: {}", txt);
-        }
     }
 }
 
