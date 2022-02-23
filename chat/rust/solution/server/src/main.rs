@@ -1,8 +1,7 @@
-use crypto_utils::{Crypto, PrimeDiffieHellman};
 use encstream::EncryptedStream;
 use std::collections::HashMap;
-use std::io::{self, *};
-use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::io::{self};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
@@ -37,7 +36,7 @@ fn accept(channel: Sender<(SocketAddr, Message)>) {
 
 fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> io::Result<()> {
     let addr = socket.peer_addr()?;
-    let mut enc_stream = EncryptedStream::establish(socket)?;
+    let mut enc_stream = EncryptedStream::dh_handshake(socket)?;
     let foreign_stream = enc_stream.try_clone()?;
 
     // Notify the server that we've established a connection

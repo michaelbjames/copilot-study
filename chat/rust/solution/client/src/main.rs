@@ -59,7 +59,7 @@ impl ChatServer {
         Return the key as bytes.
         Output must be 16 bytes long. (for a 128-bit AES key)
     */
-    pub fn establish(&mut self) -> io::Result<()> {
+    pub fn dh_handshake(&mut self) -> io::Result<()> {
         let b_bytes = {
             let mut data = [0_u8; 16]; // using 16 byte buffer
             self.socket.read(&mut data)?;
@@ -122,7 +122,7 @@ fn handle_stream_stdin(mut chat: ChatServer) -> io::Result<()> {
 fn main() {
     let (_, recv): (_, Receiver<Vec<u8>>) = channel();
     let mut chat = ChatServer::new();
-    chat.establish();
+    chat.dh_handshake();
 
     thread::spawn(move || connect(chat));
     loop {

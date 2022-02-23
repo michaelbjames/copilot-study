@@ -1,18 +1,11 @@
-use crypto_utils::{Crypto, PrimeDiffieHellman};
+use encstream::EncryptedStream;
 use std::collections::HashMap;
-use encstream::{EncryptedStream};
 use std::io::{self, *};
-use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
 const LOCAL: &str = "127.0.0.1:4040";
-
-enum Message {
-    Connected(EncryptedStream),
-    Disconnected,
-    Text(String),
-}
 
 #[derive(Default)]
 struct ChatServer {
@@ -41,11 +34,16 @@ impl ClientConnection {
         }
     }
 }
+enum Message {
+    Connected(EncryptedStream),
+    Disconnected,
+    Text(String),
+}
 
 fn accept(channel: Sender<(SocketAddr, Message)>) {
     loop {
-            // create a new socket to accept connections
-            let socket = match TcpListener::bind(LOCAL) {
+        // create a new socket to accept connections
+        let socket = match TcpListener::bind(LOCAL) {
             Ok(socket) => socket,
             Err(e) => panic!("could not read start TCP listener: {}", e),
         };
@@ -67,7 +65,7 @@ fn accept(channel: Sender<(SocketAddr, Message)>) {
 
 fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> io::Result<()> {
     let addr = socket.peer_addr()?;
-    let mut enc_stream = EncryptedStream::establish(socket)?;
+    let mut enc_stream = EncryptedStream::dh_handshake(socket)?;
     let foreign_stream = enc_stream.try_clone()?;
 
     // notify the server that we've established a connection
@@ -90,7 +88,6 @@ fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> i
 }
 
 fn main() {
-
     // create a channel to send messages to the server
     let (send, recv) = channel();
     thread::spawn(move || accept(send));
