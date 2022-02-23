@@ -67,12 +67,11 @@ impl ChatServer {
         };
 
         let other_pub_key = self.crypto.deserialize(&b_bytes);
-        let (priv_key, pubkey) = self.crypto.generate_keys();
+        let pubkey = self.crypto.init_keys();
         self.socket.write_all(&pubkey.to_vec())?;
 
-        self.crypto.handshake(&priv_key, &other_pub_key);
+        self.crypto.handshake(&other_pub_key);
         println!("Handshake complete!");
-
         Ok(())
     }
 }
