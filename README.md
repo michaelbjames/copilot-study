@@ -22,7 +22,7 @@ This project will be a set of tasks to accomplish with copilot.
 
 # Before you begin
 You'll need:
-- VSCode
+- VSCode/Neovim/Jetbrains IDE
 - the Copilot plugin for VSCode
 - If doing python:
   - pip3
@@ -101,7 +101,8 @@ Server: listening...
 Client 1: <connects>
 -⬆️  handled for you  ⬆️-
 -⬇️ to be implemented ⬇️-
-Server/Client 1: <handshake>
+Server: <send its public key>
+Client 1: <send its public key>
 Server(encrypted to Client 1): Please pick a username:
 Client 1: MySuperCoolUsername
 Server(to all): Welcome MySuperCoolUsername!
@@ -127,58 +128,13 @@ All other commands are invalid, and their behavior is unspecified.
 This function takes a message and which client sent it, it then deals with the
 message according to the server specification above.
 
-
-## Task 2 Implement DiffieHellman Key Exchange
-The crypto library needs to be implemented.
-
-### Crypto Library
-The `Crypto` class encapsulates all the encryption functionality. It provides 4 methods:
-
-- `init_keys`: The first of a two-part procedure to generate the shared secret.
-  This method generates a pair of a public and private key.
-  It returns the public key and stores the private key internally.
-- `handshake`: The second part of the procedure to generate the shared secret.
-  This method takes a public key **from the other party**
-  and combines it with the previously generated private key.
-  The resulting shared secret is stored internally.
-  After calling this method, you can call `encrypt` and `decrypt`
-  to communicate securely with the party whose public key was used in this step.
-- `encrypt`: This method takes a message as bytes and encrypts it.
-  It returns a ciphertext as bytes.
-- `decrypt`: This method takes a ciphertext as bytes
-  and returns a message as bytes.
-
-The `Crypto` class has stubs for unimplemented methods that are called by the
-interface functions. The unimplemented methods will implement the
-diffie-hellman key exchange math.
-
-It works by implementing the following math:
-
-Alice and Bob have already agreed on a prime, `p`,
-and a group generator number `g`.
-In this case, use `g=2`; and p can be any prime of your choosing in the range [51,997]. We need
-small-ish numbers to use Python's built-in math operations.
-
-Alice:
-1. pick some number `priv_a` in the range [2,p-1]
-2. generate `pub_a` as `g` ^ `priv_a` mod `p`
-
-Bob:
-1. pick some number `priv_b` in the range [2,p-1]
-2. generate `pub_b` as `g`^`priv_b` mod `p`
-
-
-To generate their shared secret:
-- Alice: generate shared secret as (`pub_b`^`priv_a`) mod `p`
-- Bob: generate shared secret as (`pub_a`^`priv_b`) mod `p`
-
-## Task 3: Implement the Client
+## Task 2: Implement the Client
 You have only the main function from the client and need to implement the rest.
 You know the client needs to take an IP and a port number, and that it uses TCP.
 
-After establishing a connection to the server, the client needs to facilitate
-the diffie-hellman handshake to establish a secure connection. The client then
-needs to listen for input from both the secure connection and also from the
+After establishing a connection to the server, the client needs to do its part
+of the cryptographic handshake to establish a secure connection. The client then
+needs to listen for input from both the secure network connection and also from the
 console. Content from the server is put on screen and messages from the console
 are sent to the server.
 
@@ -188,7 +144,7 @@ are sent to the server.
 2. Server sends its public key to the client.
 3. Client sends its public key to the server.
 
-At this point, a *shared secret* is generated, and all comunication henceforth is encrypted with that secret.
+At this point, a *shared secret* is generated, and all communication henceforth is encrypted with that secret.
 
 3. Server asks for a username.
 4. Client gives a username.
@@ -198,8 +154,40 @@ Messaging commences at this point.
 
 6. Client waits for a message from the server *or* user input from console.
 7. If it gets a message from the server, the message is shown to the client.
-8. If it gets input from the user, and the input starts with a `/`, it is interpreted as a *command* (see below).
-9. Otherwise, the input is interpreted as a *message* and sent to the server.
-10. Server sends the message to all other connected users.
+8. Messages are sent to the server.
+9. Server sends the message to all other connected users.
+
+Some messages are commands, but they are all handled by the server.
+
+As an example exchange:
+```
+Server: listening...
+Client 1: <connects>
+Server: <send its public key>
+Client 1: <send its public key>
+Server(encrypted to Client 1): Please pick a username:
+Client 1: MySuperCoolUsername
+Server(to all): Welcome MySuperCoolUsername!
+Client 2: <connects; handshakes; picks username>
+Client 1: Hello!
+Server(to all but Client 1): MySuperCoolUsername: Hello!
+Client 1: /quit
+```
+
+### Using the crypto library
+The Crypto class encapsulates all the encryption functionality you'll need. It provides 4 methods:
+
+`init_keys`: The first of a two-part procedure to generate the shared secret. This method generates a pair of a public and private key. It returns the public key and stores the private key internally.
+
+`handshake`: The second part of the procedure to generate the shared secret.
+This method takes a public key from the other party and combines it with the
+previously generated private key. The resulting shared secret is stored
+internally. After calling this method, you can call encrypt and decrypt to
+communicate securely with the other party.
+
+`encrypt`: This method takes a message as bytes and encrypts it. It returns a ciphertext as bytes.
+
+`decrypt`: This method takes a ciphertext as bytes and returns a message as bytes.
+
 
 
