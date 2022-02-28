@@ -31,6 +31,7 @@ impl Crypto for PrimeDiffieHellman {
 
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
         let mut encryptvec: Vec<u8> = plaintext.to_vec();
+        encryptvec.push(encryptvec.len() as u8); // add data length
         let mut ciphertext = vec![0; plaintext.len() + self.cipher.block_size()];
         let mut crypter = Crypter::new(self.cipher, Mode::Encrypt, &self.key, None).unwrap();
         crypter.pad(true);

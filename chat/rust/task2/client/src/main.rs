@@ -2,9 +2,9 @@ use crypto_utils::{Crypto, PrimeDiffieHellman};
 use std::io::Write;
 use std::io::{self, *};
 use std::net::TcpStream;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver};
 use std::thread;
-const LOCAL: &str = "127.0.0.1:4040";
+use std::env;
 
 pub struct ChatServer {
     socket: TcpStream,
@@ -12,8 +12,8 @@ pub struct ChatServer {
 }
 
 impl ChatServer {
-    pub fn new() -> Self {
-        let socket = match TcpStream::connect(LOCAL) {
+    pub fn new(address: &str) -> Self {
+        let socket = match TcpStream::connect(address) {
             Ok(socket) => socket,
             Err(e) => panic!("could not connect to server: {}", e),
         };
@@ -23,8 +23,7 @@ impl ChatServer {
 
     /* Encrypt and send a message to the server */
     pub fn send(&mut self, msg: &str) -> io::Result<()> {
-        let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
-        msg_bytes.push(msg_bytes.len() as u8); // add data length
+        let msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
         self.socket.write(&encrypted_msg)?;
         Ok(())
@@ -32,15 +31,12 @@ impl ChatServer {
 
     /* Receive a message from the server and decrypt */
 
-    pub fn receive(&mut self) -> io::Result<Option<String>> {
+    pub fn receive(&mut self) -> io::Result<()> {
         let raw = self.receive_raw()?;
         let message = self.crypto.decrypt(&raw);
-        let txt = std::str::from_utf8(&message)
-            .ok()
-            .map(str::trim)
-            .map(String::from);
-        println!("Received: {:?}", &txt);
-        Ok(txt)
+        let txt = std::str::from_utf8(&message);
+        println!("{:?}", &txt.unwrap());
+        Ok(())
     }
 
     fn receive_raw(&mut self) -> io::Result<Vec<u8>> {
@@ -89,16 +85,12 @@ fn connect(chat: ChatServer) -> io::Result<()> {
 
 fn handle_stream_server(mut chat: ChatServer) -> io::Result<()> {
     loop {
-        let msg = match chat.receive() {
-            Ok(Some(txt)) => {
-                println!("received: {}", txt);
+        match chat.receive() {
+            Ok(_) => {
+                println!("received");
             }
             Err(_) => {
                 println!("disconnected\n");
-            }
-            _ => {
-                // ignored
-                continue;
             }
         };
     }
@@ -121,11 +113,16 @@ fn handle_stream_stdin(mut chat: ChatServer) -> io::Result<()> {
 
 fn main() {
     let (_, recv): (_, Receiver<Vec<u8>>) = channel();
-    let mut chat = ChatServer::new();
-    chat.dh_handshake();
+    let args: Vec<String> = env::args().collect();
+    let ip = &args[1];
+    let port = &args[2];
+    let address = format!("{}:{}", ip, port);
+
+    let mut chat = ChatServer::new(&address);
+    chat.dh_handshake().expect("Error in DH handshake");
 
     thread::spawn(move || connect(chat));
     loop {
-        recv.recv();
+        recv.recv().expect_err("Error receiving message");
     }
 }

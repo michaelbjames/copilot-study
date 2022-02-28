@@ -1,6 +1,7 @@
 use crypto_utils::{Crypto, PrimeDiffieHellman};
 use std::io::{self, *};
 use std::net::{Shutdown, TcpStream};
+use std::vec;
 
 pub struct EncryptedStream {
     socket: TcpStream,
@@ -40,8 +41,7 @@ impl EncryptedStream {
     // send an encrypted message to the connected client.
 
     pub fn send(&mut self, msg: &str) -> io::Result<()> {
-        let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
-        msg_bytes.push(msg_bytes.len() as u8); // add data length
+        let msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
         self.socket.write(&encrypted_msg)?;
         println!("Sent: {}", &msg);

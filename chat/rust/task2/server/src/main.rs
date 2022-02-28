@@ -1,7 +1,7 @@
 use encstream::EncryptedStream;
 use std::collections::HashMap;
-use std::io::{self, *};
-use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::io;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
