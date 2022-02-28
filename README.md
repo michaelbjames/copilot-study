@@ -23,7 +23,7 @@ This project will be a set of tasks to accomplish with copilot.
 # Before you begin
 You'll need:
 - VSCode/Neovim/Jetbrains IDE
-- the Copilot plugin for VSCode
+- the Copilot plugin for your editor
 - If doing python:
   - pip3
   - run `chat/py$ pip3 install -r requirements.txt`
