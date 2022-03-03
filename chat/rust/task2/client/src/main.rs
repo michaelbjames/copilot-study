@@ -12,9 +12,8 @@ pub struct ChatServer {
 }
 
 impl ChatServer {
-    
+    //TODO
 }
-
 
 fn main() {
     let (_, recv): (_, Receiver<Vec<u8>>) = channel();
@@ -26,7 +25,7 @@ fn main() {
     let mut chat = ChatServer::connect(&address);
     chat.dh_handshake().expect("Error in DH handshake");
 
-    thread::spawn(move || accept(chat));
+    thread::spawn(move || accept_input(chat));
     loop {
         recv.recv().expect_err("Error receiving message");
     }

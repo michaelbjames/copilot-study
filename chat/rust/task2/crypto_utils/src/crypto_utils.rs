@@ -16,6 +16,12 @@ pub trait Crypto {
 }
 
 impl Crypto for PrimeDiffieHellman {
+    /** Facilitate a cryptographic handshake between two parties.
+        This will generate the private key and the public key.
+        The private key is initialized inside the class and
+        you are given the public key, in a format you can
+        readily send to the other party.
+    */
     fn init_keys(&mut self) -> KeyBytes {
         self.priv_key = self.gen_priv_key();
         let pub_key = self.gen_pub_key(&self.priv_key);
@@ -23,12 +29,14 @@ impl Crypto for PrimeDiffieHellman {
         pubkey_bytes
     }
 
+    // You must call handshake() with the public key the other party gives you.
     fn handshake(&mut self, other_pub_key: &BigUint) {
         let shared_secret = self.compute_shared_secret(&self.priv_key, other_pub_key);
         let shared_key = self.pad_be(&shared_secret);
         self.key = shared_key;
     }
 
+    // Encrypts plaintext using the shared secret
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
         let mut encryptvec: Vec<u8> = plaintext.to_vec();
         encryptvec.push(encryptvec.len() as u8); // add data length
@@ -44,6 +52,7 @@ impl Crypto for PrimeDiffieHellman {
         ciphertext
     }
 
+    // Decrypt a message using the shared secret
     fn decrypt(&self, data: &[u8]) -> Vec<u8> {
         let mut decrypted = Crypter::new(self.cipher, Mode::Decrypt, &self.key, None).unwrap();
         let mut output = vec![0_u8; data.len() + self.cipher.block_size()];
@@ -67,10 +76,14 @@ impl Crypto for PrimeDiffieHellman {
         }
     }
 
+    // Input: a public key to be sent to the other party
+    // Output: a string representing the public key, in bytes
     fn serialize(&self, pub_key: &BigUint) -> KeyBytes {
         self.pad_be(pub_key)
     }
 
+    // Input: bytes representing a public key as a string.
+    // Output: a public key int
     fn deserialize(&self, pub_key: &KeyBytes) -> BigUint {
         BigUint::from_bytes_be(pub_key)
     }
