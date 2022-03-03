@@ -148,16 +148,16 @@ are sent to the server.
 
 At this point, a *shared secret* is generated, and all communication henceforth is encrypted with that secret.
 
-3. Server asks for a username.
-4. Client gives a username.
-5. Server sends a welcome message to all connected clients.
+4. Server asks for a username.
+5. Client gives a username.
+6. Server sends a welcome message to all connected clients.
 
 Messaging commences at this point.
 
-6. Client waits for a message from the server *or* user input from console.
-7. If it gets a message from the server, the message is shown to the client.
-8. Messages are sent to the server.
-9. Server sends the message to all other connected users.
+7. Client waits for a message from the server *or* user input from console.
+8. If it gets a message from the server, the message is shown to the client.
+9. Messages are sent to the server.
+10. Server sends the message to all other connected users.
 
 Some messages are commands, but they are all handled by the server.
 
