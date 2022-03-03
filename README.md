@@ -88,6 +88,8 @@ Usage: client.py host port
 ```
 It doesn't do anything other than print out the two arguments it was given. :-)
 
+This is a time to check that your usual plugins are operating as you'd expect.
+
 ## Task 1 Implement the Server
 You need to implement the server. It will be listening for connections on port
 4040 over TCP. Any connection it makes, it will perform a handshake. It should ask for a
