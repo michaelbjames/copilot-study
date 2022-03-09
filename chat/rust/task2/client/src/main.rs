@@ -1,10 +1,10 @@
 use crypto_utils::{Crypto, PrimeDiffieHellman};
+use std::env;
 use std::io::Write;
 use std::io::{self, *};
 use std::net::TcpStream;
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
-use std::env;
 
 pub struct ChatServer {
     socket: TcpStream,
@@ -12,6 +12,10 @@ pub struct ChatServer {
 }
 
 impl ChatServer {
+    // TODO
+}
+
+fn accept_input(chat: ChatServer) {
     //TODO
 }
 
@@ -22,11 +26,11 @@ fn main() {
     let port = &args[2];
     let address = format!("{}:{}", ip, port);
 
-    let mut chat = ChatServer::connect(&address);
-    chat.dh_handshake().expect("Error in DH handshake");
+    let mut chat = ChatServer::new(&address);
+    chat.dh_handshake();
 
     thread::spawn(move || accept_input(chat));
     loop {
-        recv.recv().expect_err("Error receiving message");
+        recv.recv();
     }
 }

@@ -76,15 +76,19 @@ fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> i
     loop {
         let msg = match enc_stream.recv() {
             Ok(Some(txt)) => Message::Text(txt),
-            Err(_) => Message::Disconnected,
+            Ok(None) => {
+                drop(Message::Disconnected);
+                break;
+            }
             _ => {
-                // ignored
                 continue;
             }
         };
 
         channel.send((addr, msg)).unwrap();
     }
+
+    Ok(())
 }
 
 fn main() {

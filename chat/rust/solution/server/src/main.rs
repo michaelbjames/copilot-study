@@ -1,9 +1,8 @@
 use encstream::EncryptedStream;
 use std::collections::HashMap;
-use std::io::{self};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Sender};
-use std::thread;
+use std::{io, thread};
 
 const LOCAL: &str = "127.0.0.1:4040";
 
@@ -47,15 +46,19 @@ fn handle_stream(socket: TcpStream, channel: Sender<(SocketAddr, Message)>) -> i
     loop {
         let msg = match enc_stream.recv() {
             Ok(Some(txt)) => Message::Text(txt),
-            Err(_) => Message::Disconnected,
+            Ok(None) => {
+                drop(Message::Disconnected);
+                break;
+            }
             _ => {
-                // ignored
                 continue;
             }
         };
 
         channel.send((addr, msg)).unwrap();
     }
+
+    Ok(())
 }
 
 struct ClientConnection {

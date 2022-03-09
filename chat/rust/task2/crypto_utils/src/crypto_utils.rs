@@ -1,5 +1,3 @@
-use ::std::panic;
-
 use num::BigUint;
 use openssl::symm::{Cipher, Crypter, Mode};
 use rand::Rng;
@@ -8,7 +6,7 @@ type KeyBytes = [u8; 16];
 
 pub trait Crypto {
     fn init_keys(&mut self) -> KeyBytes;
-    fn handshake(&mut self, other_pub_key: &BigUint);
+    fn handshake(&mut self, other_pub_key: &KeyBytes);
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
     fn serialize(&self, pub_key: &BigUint) -> KeyBytes;
@@ -25,13 +23,13 @@ impl Crypto for PrimeDiffieHellman {
     fn init_keys(&mut self) -> KeyBytes {
         self.priv_key = self.gen_priv_key();
         let pub_key = self.gen_pub_key(&self.priv_key);
-        let pubkey_bytes = self.serialize(&pub_key);
-        pubkey_bytes
+        self.serialize(&pub_key)
     }
 
     // You must call handshake() with the public key the other party gives you.
-    fn handshake(&mut self, other_pub_key: &BigUint) {
-        let shared_secret = self.compute_shared_secret(&self.priv_key, other_pub_key);
+    fn handshake(&mut self, other_pub_key: &KeyBytes) {
+        let deserialized_key = self.deserialize(other_pub_key);
+        let shared_secret = self.compute_shared_secret(&self.priv_key, &deserialized_key);
         let shared_key = self.pad_be(&shared_secret);
         self.key = shared_key;
     }
@@ -56,24 +54,10 @@ impl Crypto for PrimeDiffieHellman {
     fn decrypt(&self, data: &[u8]) -> Vec<u8> {
         let mut decrypted = Crypter::new(self.cipher, Mode::Decrypt, &self.key, None).unwrap();
         let mut output = vec![0_u8; data.len() + self.cipher.block_size()];
-        let mut decryptvec: Vec<u8> = data
-            .to_vec()
-            .into_iter()
-            .rev()
-            .skip_while(|&x| x == 0)
-            .collect();
-        decryptvec.reverse();
-
-        let datalen = decryptvec.pop();
-        decrypted.update(&decryptvec, &mut output).unwrap();
-
-        match datalen {
-            Some(x) => {
-                output.truncate(x as usize);
-                output
-            }
-            None => panic!("Decryption failed"),
-        }
+        let datalen = data.to_vec().pop();
+        decrypted.update(data, &mut output).unwrap();
+        output.truncate(datalen.unwrap() as usize);
+        output
     }
 
     // Input: a public key to be sent to the other party

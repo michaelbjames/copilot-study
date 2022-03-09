@@ -16,14 +16,13 @@ impl EncryptedStream {
         let pubkey = crypto.init_keys();
         socket.write_all(&pubkey.to_vec())?;
 
-        let b_bytes = {
+        let pub_key_bytes = {
             let mut data = [0_u8; 16]; // using 16 byte buffer
             socket.read_exact(&mut data)?;
             data
         };
 
-        let other_pub_key = crypto.deserialize(&b_bytes);
-        crypto.handshake(&other_pub_key);
+        crypto.handshake(&pub_key_bytes);
         println!("Handshake complete!");
 
         Ok(EncryptedStream { socket, crypto })
@@ -40,10 +39,9 @@ impl EncryptedStream {
     // send an encrypted message to the connected client.
 
     pub fn send(&mut self, msg: &str) -> io::Result<()> {
-        let mut msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
-        msg_bytes.push(msg_bytes.len() as u8); // add data length
+        let msg_bytes: Vec<u8> = msg.trim().as_bytes().to_vec();
         let encrypted_msg = self.crypto.encrypt(&msg_bytes);
-        self.socket.write(&encrypted_msg)?;
+        self.socket.write_all(&encrypted_msg)?;
         println!("Sent: {}", &msg);
         Ok(())
     }
@@ -62,18 +60,19 @@ impl EncryptedStream {
     // receive an encrypted message from the connected client and decrypt it
 
     pub fn recv(&mut self) -> io::Result<Option<String>> {
-        let raw = Self::receive_raw(&mut self.socket)?;
+        let raw = self.receive_raw()?;
+        if raw.is_empty() {
+            return Ok(None);
+        }
         let message = self.crypto.decrypt(&raw);
-        let txt = std::str::from_utf8(&message)
-            .ok()
-            .map(str::trim)
-            .map(String::from);
+        let txt = std::str::from_utf8(&message).ok().map(String::from);
         println!("Received: {:?}", &txt);
         Ok(txt)
     }
 
-    fn receive_raw(socket: &mut TcpStream) -> io::Result<Vec<u8>> {
-        let mut data = vec![0_u8; 256]; // using 256 byte buffer
-        socket.read(&mut data).map(|_| data)
+    fn receive_raw(&mut self) -> io::Result<Vec<u8>> {
+        let mut data = vec![0_u8; 1024];
+        let bytes_read = self.socket.read(&mut data)?;
+        Ok(data[..bytes_read].to_vec())
     }
 }
