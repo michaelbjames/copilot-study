@@ -125,7 +125,7 @@ The following are the supported commands and their effect:
 All other commands are invalid, and their behavior is unspecified.
 
 
-**You need to implement the function `run_client/_RUST_EQUIV_` (python/rust) with the TODO under
+**You need to implement the function `run_client/handle_msg` (python/rust) with the TODO under
 `task1/server`**. The networking logic has already been implemented for you.
 This function takes a message and which client sent it, it then deals with the
 message according to the server specification above.
