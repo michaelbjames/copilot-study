@@ -1,0 +1,3 @@
+[workspace]
+members=["task3/rust"]
+edition="2021"

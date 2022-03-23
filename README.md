@@ -126,11 +126,7 @@ The following are the supported commands and their effect:
 All other commands are invalid, and their behavior is unspecified.
 
 
-<<<<<<< Updated upstream
-**You need to implement the function `run_client/handle_msg` (python/rust) with the TODO under
-=======
 **You need to implement the function `run_client` (python) or `handle_msg` (rust) with the TODO under
->>>>>>> Stashed changes
 `task1/server`**. The networking logic has already been implemented for you.
 This function takes a message and which client sent it, it then deals with the
 message according to the server specification above.
@@ -198,3 +194,18 @@ communicate securely with the other party.
 
 
 
+## Task 3
+You are playing the role of a data scientist. You need to create a couple plots.
+Your subtasks are:
+1. Create a fibonacci function. It should be fast enough to produce fib(50)
+   quickly (use some memoization technique).
+2. Plot the log of the fibonacci function up to 50.
+
+3. Create a dataset from the _first digit_ of each fibonacci number up to 50.
+4. Plot the dataset as a histogram. (This distribution demonstrates Benford's Law).
+
+### Python
+You'll use matplotlib to create the plots.
+
+### Rust
+You'll use the plotters library to create the plots.
