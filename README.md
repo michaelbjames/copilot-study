@@ -197,8 +197,8 @@ communicate securely with the other party.
 ## Task 3
 You are playing the role of a data scientist. You need to create a couple plots.
 Your subtasks are:
-1. Create a fibonacci function. It should be fast enough to produce fib(50)
-   quickly (use some memoization technique).
+1. Create a fibonacci function. It should be fast enough to produce fib(50) in
+  <1 second (use some memoization technique).
 2. Plot the log of the fibonacci function up to 50.
 
 3. Create a dataset from the _first digit_ of each fibonacci number up to 50.
@@ -209,3 +209,26 @@ You'll use matplotlib to create the plots.
 
 ### Rust
 You'll use the plotters library to create the plots.
+
+## Task 4
+Benford's Law is an observation that the first digit of a number is likely to be
+low. While this observation appears true in many datasets,
+it is not true for all. The fibonacci sequence observes Benford's Law, but
+the reciprocal of consecutive numbers do not.
+
+You'll do this task in two languages.
+
+Rust:
+1. Generate the first 180 fibonacci numbers
+   1. It should be fast enough that the generation of the numbers takes <1 second
+2. Write them to a file
+3. Generate the values of 1/2 through 1/182
+4. Write those to a separate file
+
+Python:
+1. Read in the fibonacci numbers
+2. Plot the first digits as a histogram (using matplotlib)
+3. Read in the reciprocals
+4. Strip off leading zeros
+5. Add them to the plot of the fibonacci numbers, such that they overlap and are
+   both visible.
