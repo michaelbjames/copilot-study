@@ -18,6 +18,9 @@ This project will be a set of tasks to accomplish with copilot.
   chat/
     py/   <- python implementation
     rust/ <- rust implementation
+  task<N>/
+    py/   <- python implementation
+    rust/ <- rust implementation
 ```
 
 # Before you begin
@@ -26,9 +29,45 @@ You'll need:
 - the Copilot plugin for your editor
 - If doing python:
   - pip3
-  - run `chat/py$ pip3 install -r requirements.txt`
+  - run `$ pip3 install -r requirements.txt`
 
-# Chat Server
+# Tasks
+While implementing these tasks, you're welcome to (but not required to):
+- Import extra libraries
+- Look on the internet for API information / stackoverflow
+- Write tests
+- Write extra functions or classes
+- Run the solutions to test against (e.g., testing your client against the
+  solution server)
+
+Please DON'T:
+- read the code of other tasks.
+- read the solution code (under the `solution` directory in python)
+
+## Training Task
+This task is meant to familiarize you with Copilot, and how you might interact
+with it. You task is to write the main function of the client chat application.
+The main function should read in the two arguments from the command line: the
+hostname and the port number. It does not need to actually do any networking,
+just print out the hostname and the port. If both are not supplied, the main
+function should show the usage message.
+
+This is located under `training/`
+
+```
+$ python client localhost 4040
+Connecting to localhost:4040
+
+$ python client
+Usage: client.py host port
+```
+It doesn't do anything other than print out the two arguments it was given. :-)
+
+This is a time to check that your usual plugins are operating as you'd expect.
+
+
+
+# Chat Server (Tasks 1, 2)
 
 MyRC is a secure chat application.
 Multiple clients connect to a single server.
@@ -57,39 +96,6 @@ The client can be called with:
 - Rust: `chat/rust/client$ cargo run localhost 4040`
 
 You'll need to run multiple clients to see the chat room in action.
-
-# Tasks
-While implementing these tasks, you're welcome to (but not required to):
-- Import extra libraries
-- Look on the internet for API information / stackoverflow
-- Write tests
-- Write extra functions or classes
-- Run the solutions to test against (e.g., testing your client against the
-  solution server)
-
-Please DON'T:
-- read the code of other tasks.
-- read the solution code (under the `solution` directory in python)
-
-## Training Task
-This task is meant to familiarize you with Copilot, and how you might interact
-with it. You task is to write the main function of the client chat application.
-The main function should read in the two arguments from the command line: the
-hostname and the port number. It does not need to actually do any networking,
-just print out the hostname and the port. If both are not supplied, the main
-function should show the usage message.
-
-```
-$ python client localhost 4040
-Connecting to localhost:4040
-
-$ python client
-Usage: client.py host port
-```
-It doesn't do anything other than print out the two arguments it was given. :-)
-
-This is a time to check that your usual plugins are operating as you'd expect.
-
 ## Task 1 Implement the Server
 You need to implement the server. It will be listening for connections on port
 4040 over TCP. Any connection it makes, it will perform a handshake. It should ask for a
@@ -194,7 +200,7 @@ communicate securely with the other party.
 
 
 
-## Task 3
+# Task 3
 You are playing the role of a data scientist. You need to create a couple plots.
 Your subtasks are:
 1. Create a fibonacci function. It should be fast enough to produce fib(50) in
@@ -210,7 +216,7 @@ You'll use matplotlib to create the plots.
 ### Rust
 You'll use the plotters library to create the plots.
 
-## Task 4
+# Task 4
 Benford's Law is an observation that the first digit of a number is likely to be
 low. While this observation appears true in many datasets,
 it is not true for all. The fibonacci sequence observes Benford's Law, but
