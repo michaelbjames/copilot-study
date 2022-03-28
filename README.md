@@ -218,21 +218,25 @@ You'll use the plotters library to create the plots.
 Benford's Law is an observation that the first digit of a number is likely to be
 low. While this observation appears true in many datasets,
 it is not true for all. The fibonacci sequence observes Benford's Law, but
-the reciprocal of consecutive numbers do not.
+the reciprocal of consecutive numbers do not. You'll be plotting these two
+sequences to see the difference.
 
-You'll do this task in two languages.
+First (in Rust), generate the fibonacci sequence up to 180:
+fib(180) = 18547707689471986212190138521399707760
+- It should be fast enough to run in <1 second
+- Write to a file (fib.txt)
 
-Rust:
-1. Generate the first 180 fibonacci numbers
-   1. It should be fast enough that the generation of the numbers takes <1 second
-2. Write them to a file
-3. Generate the values of 1/2 through 1/182
-4. Write those to a separate file
+Second (in Python), plot this data as a histogram of the first digits.
+- Get the first digit of each number
+- Plot it as a histogram in matplotlib
 
-Python:
-1. Read in the fibonacci numbers
-2. Plot the first digits as a histogram (using matplotlib)
-3. Read in the reciprocals
-4. Strip off leading zeros
-5. Add them to the plot of the fibonacci numbers, such that they overlap and are
-   both visible.
+Third (in Rust), generate the reciprocal of numbers 2,3,...,181,182:
+- You'll get 0.5, 0.333333333, .... 0.00549450549
+- Write these to a file (inverse.txt)
+
+Fourth (in Python), plot this data as a histogram of the first digits, on top of
+the previous plot.
+- Ignore leading zeros
+- Get the first digit of each number
+- Plot it as a histogram in matplotlib
+  - Both plots should be visible at the same time!
