@@ -9,8 +9,6 @@ We want to understand how people interact with Copilot.
 To get at these kinds of questions *and more* we've created a small application,
 YOU'RE going to build (with Copilot's help).
 
-You'll be writing a secure instant message application.
-
 ## Organization
 This project will be a set of tasks to accomplish with copilot.
 ```
