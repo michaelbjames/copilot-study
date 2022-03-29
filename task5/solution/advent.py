@@ -1,40 +1,60 @@
-import os
+from collections import Counter, defaultdict
 
-VERTICAL_COMMAND = {"up": -1, "down": 1}
+def part_one(filename: str) -> int:
+    template, rules = parse_input(filename)
+    # here you actually construct the new template then counted the number of pairs
+    for _ in range(10):
+        new_template = ""
+        for i in range(len(template) - 1):
+            pair = template[i : i + 2]
+            new_template += pair[0]
+            if pair in rules:
+                new_template += rules[pair]
+        new_template += pair[1]
+        template = new_template
 
-def get_instructions(l):
-    return [tuple(_l.split()) for _l in l]
-
-def solution1(l):
-    x = 0
-    y = 0
-    instuctions = get_instructions(l)
-    for command, value in instuctions:
-        if command == "forward":
-            x += int(value)
-        else:
-            y += VERTICAL_COMMAND[command] * int(value)
-    return x * y
+    counters = Counter(template)
+    return max(counters.values()) - min(counters.values())
 
 
-def solution2(l):
-    x = 0
-    aim = 0
-    depth = 0
-    instuctions = get_instructions(l)
-    for command, value in instuctions:
-        if command == "forward":
-            x += int(value)
-            depth += int(value) * aim
-        else:
-            aim += VERTICAL_COMMAND[command] * int(value)
-    return x * depth
+def part_two(filename: str) -> int:
+    template, rules = parse_input(filename)
+    count_pairs = defaultdict(int)
+    print(template)
+    for i in range(len(template) - 1):
+        count_pairs[template[i : i + 2]] += 1
+    print(count_pairs) ## counted the number of pairs in the original template
 
+    ## count the pairs without constructing the new template
+    for _ in range(40):
+        new_count_pairs = defaultdict(int) ## reset the count_pairs
+        for pair, count in count_pairs.items():
+            new_count_pairs[pair[0] + rules[pair]] += count
+            new_count_pairs[rules[pair] + pair[1]] += count
+        count_pairs = new_count_pairs
+
+    counters = defaultdict(int)
+    for pair in count_pairs:
+        for ch in pair:
+            counters[ch] += count_pairs[pair]
+    
+    # if even divide by 2, if odd (chars on edges) add 1 and divide by 2
+    counters = {k: (v + 1) // 2 for k, v in counters.items()}
+    return max(counters.values()) - min(counters.values())
+
+def parse_input(filename):
+    with open(filename) as f:
+        template, rules = f.read().split("\n\n")
+    rules = list(
+        map(lambda rule: rule.strip().split(" -> "), rules.strip().split("\n"))
+    )
+    rules = {rule[0]: rule[1] for rule in rules}
+    return template, rules
 
 if __name__ == "__main__":
-    dir = os.path.abspath(os.path.dirname(__file__))
-    with open(os.path.join(dir, "input.txt")) as file:
-        data = file.read().splitlines()
+    input_path = "input.txt"
+    print("---Part One---")
+    #print(part_one(input_path))
 
-    print(solution1(data))
-    print(solution2(data))
+    print("---Part Two---")
+    #print(part_two(input_path))
