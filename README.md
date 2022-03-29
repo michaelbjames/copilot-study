@@ -244,63 +244,58 @@ the previous plot.
 # Task 5: Find the submarine position
 
 ### Part 1
-A submarine can take a series of commands like forward 1, down 2, or up 3:
+The incredible pressures at this depth are starting to put a strain on your submarine. The submarine has polymerization equipment that would produce suitable materials to reinforce the submarine, and the nearby volcanically-active caves should even have the necessary input elements in sufficient quantities.
 
-forward X increases the horizontal position by X units.
-down X increases the depth by X units.
-up X decreases the depth by X units.
-Note that since you're on a submarine, down and up affect your depth, and so they have the opposite result of what you might expect.
+The submarine manual contains instructions for finding the optimal polymer formula; specifically, it offers a polymer template and a list of pair insertion rules (your puzzle input). You just need to work out what polymer would result after repeating the pair insertion process a few times.
 
-The submarine seems to already have a planned course (your puzzle input). You should probably figure out where it's going. For example:
+For example:
 ```
-forward 5
-down 5
-forward 8
-up 3
-down 8
-forward 2
+NNCB
+
+CH -> B
+HH -> N
+CB -> H
+NH -> C
+HB -> C
+HC -> B
+HN -> C
+NN -> C
+BH -> H
+NC -> B
+NB -> B
+BN -> B
+BB -> N
+BC -> B
+CC -> N
+CN -> C
 ```
-Your horizontal position and depth both start at 0. The steps above would then modify them as follows:
+The first line is the polymer template - this is the starting point of the process.
 
-forward 5 adds 5 to your horizontal position, a total of 5.
-down 5 adds 5 to your depth, resulting in a value of 5.
-forward 8 adds 8 to your horizontal position, a total of 13.
-up 3 decreases your depth by 3, resulting in a value of 2.
-down 8 adds 8 to your depth, resulting in a value of 10.
-forward 2 adds 2 to your horizontal position, a total of 15.
-After following these instructions, you would have a horizontal position of 15 and a depth of 10. (Multiplying these together produces 150.)
+The following section defines the pair insertion rules. A rule like AB -> C means that when elements A and B are immediately adjacent, element C should be inserted between them. These insertions all happen simultaneously.
 
-Calculate the horizontal position and depth you would have after following the planned course. What do you get if you multiply your final horizontal position by your final depth?
+So, starting with the polymer template NNCB, the first step simultaneously considers all three pairs:
+
+The first pair (NN) matches the rule NN -> C, so element C is inserted between the first N and the second N.
+The second pair (NC) matches the rule NC -> B, so element B is inserted between the N and the C.
+The third pair (CB) matches the rule CB -> H, so element H is inserted between the C and the B.
+Note that these pairs overlap: the second element of one pair is the first element of the next pair. Also, because all pairs are considered simultaneously, inserted elements are not considered to be part of a pair until the next step.
+
+After the first step of this process, the polymer becomes NCNBCHB.
+
+Here are the results of a few steps using the above rules:
+
+Template:     NNCB
+After step 1: NCNBCHB
+After step 2: NBCCNBBBCBHCB
+After step 3: NBBBCNCCNBBNBNBBCHBHHBCHB
+After step 4: NBBNBNBBCCNBCNCCNBBNBBNBBBNBBNBBCBHCBHHNHCBBCBHCB
+This polymer grows quickly. After step 5, it has length 97; After step 10, it has length 3073. After step 10, B occurs 1749 times, C occurs 298 times, H occurs 161 times, and N occurs 865 times; taking the quantity of the most common element (B, 1749) and subtracting the quantity of the least common element (H, 161) produces 1749 - 161 = 1588.
+
+Apply 10 steps of pair insertion to the polymer template and find the most and least common elements in the result. What do you get if you take the quantity of the most common element and subtract the quantity of the least common element?
 
 ### Part 2
-Based on your calculations, the planned course doesn't seem to make any sense. You find the submarine manual and discover that the process is actually slightly more complicated.
+The resulting polymer isn't nearly strong enough to reinforce the submarine. You'll need to run more steps of the pair insertion process; a total of 40 steps should do it.
 
-In addition to horizontal position and depth, you'll also need to track a third value, aim, which also starts at 0. The commands also mean something entirely different than you first thought:
+In the above example, the most common element is B (occurring 2192039569602 times) and the least common element is H (occurring 3849876073 times); subtracting these produces 2188189693529.
 
-down X increases your aim by X units.
-up X decreases your aim by X units.
-forward X does two things:
-It increases your horizontal position by X units.
-It increases your depth by your aim multiplied by X.
-Again note that since you're on a submarine, down and up do the opposite of what you might expect: "down" means aiming in the positive direction.
-
-```
-forward 5
-down 5
-forward 8
-up 3
-down 8
-forward 2
-```
-
-Now, the above example does something different:
-
-forward 5 adds 5 to your horizontal position, a total of 5. Because your aim is 0, your depth does not change.
-down 5 adds 5 to your aim, resulting in a value of 5.
-forward 8 adds 8 to your horizontal position, a total of 13. Because your aim is 5, your depth increases by 8\*5=40.
-up 3 decreases your aim by 3, resulting in a value of 2.
-down 8 adds 8 to your aim, resulting in a value of 10.
-forward 2 adds 2 to your horizontal position, a total of 15. Because your aim is 10, your depth increases by 2*10=20 to a total of 60.
-After following these new instructions, you would have a horizontal position of 15 and a depth of 60. (Multiplying these produces 900.)
-
-Using this new interpretation of the commands, calculate the horizontal position and depth you would have after following the planned course. What do you get if you multiply your final horizontal position by your final depth?
+Apply 40 steps of pair insertion to the polymer template and find the most and least common elements in the result. What do you get if you take the quantity of the most common element and subtract the quantity of the least common element?
