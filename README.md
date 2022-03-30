@@ -303,7 +303,7 @@ the previous plot.
  up 3 decreases your aim by 3, resulting in a value of 2.
  down 8 adds 8 to your aim, resulting in a value of 10.
  forward 2 adds 2 to your horizontal position, a total of 15. Because your aim is 10, your depth increases by 2*10=20 to a total of 70.
- After following these new instructions, you would have a horizontal position of 15 and a depth of 60. (Multiplying these produces 1050.)
+ After following these new instructions, you would have a horizontal position of 15 and a depth of 70. (Multiplying these produces 1050.)
 
  Using this new interpretation of the commands, calculate the horizontal position and depth you would have after following the planned course. What do you get if you multiply your final horizontal position by your final depth?
 
