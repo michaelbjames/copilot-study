@@ -20,14 +20,12 @@ def part_one(filename: str) -> int:
 def part_two(filename: str) -> int:
     template, rules = parse_input(filename)
     count_pairs = defaultdict(int)
-    print(template)
     for i in range(len(template) - 1):
         count_pairs[template[i : i + 2]] += 1
-    print(count_pairs) ## counted the number of pairs in the original template
 
     ## count the pairs without constructing the new template
     for _ in range(40):
-        new_count_pairs = defaultdict(int) ## reset the count_pairs
+        new_count_pairs = defaultdict(int)
         for pair, count in count_pairs.items():
             new_count_pairs[pair[0] + rules[pair]] += count
             new_count_pairs[rules[pair] + pair[1]] += count
@@ -52,9 +50,9 @@ def parse_input(filename):
     return template, rules
 
 if __name__ == "__main__":
-    input_path = "input.txt"
+    input_path = "input-day14.txt"
     print("---Part One---")
-    #print(part_one(input_path))
+    print(part_one(input_path))
 
     print("---Part Two---")
-    #print(part_two(input_path))
+    print(part_two(input_path))
