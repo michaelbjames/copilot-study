@@ -9,6 +9,9 @@ We want to understand how people interact with Copilot.
 To get at these kinds of questions *and more* we've created a small application,
 YOU'RE going to build (with Copilot's help).
 
+Please read up to and including the ##Training Task section.
+Your interviewer will tell you which problem you'll be working on after that.
+
 ## Organization
 This project will be a set of tasks to accomplish with copilot.
 ```
@@ -16,7 +19,7 @@ This project will be a set of tasks to accomplish with copilot.
   chat/
     py/   <- python implementation
     rust/ <- rust implementation
-  task<N>/
+  <task-name>/
     py/   <- python implementation
     rust/ <- rust implementation
 ```
@@ -197,31 +200,14 @@ communicate securely with the other party.
 `decrypt`: This method takes a ciphertext as bytes and returns a message as bytes.
 
 
-
-# Task 3
-You are playing the role of a data scientist. You need to create a couple plots.
-Your subtasks are:
-1. Create a fibonacci function. It should be fast enough to produce fib(50) in
-  <1 second (use some memoization technique).
-2. Plot the log of the fibonacci function up to 50.
-
-3. Create a dataset from the _first digit_ of each fibonacci number up to 50.
-4. Plot the dataset as a histogram. (This distribution demonstrates Benford's Law).
-
-### Python
-You'll use matplotlib to create the plots.
-
-### Rust
-You'll use the plotters library to create the plots.
-
-# Task 4
+# Task 3: Benford's Law
 Benford's Law is an observation that the first digit of a number is likely to be
 low. While this observation appears true in many datasets,
-it is not true for all. The fibonacci sequence observes Benford's Law, but
+it is not true for all. The Fibonacci sequence observes Benford's Law, but
 the reciprocal of consecutive numbers do not. You'll be plotting these two
 sequences to see the difference.
 
-First (in Rust), generate the fibonacci sequence up to 180:
+First (in Rust), generate the Fibonacci sequence up to 180:
 fib(180) = 18547707689471986212190138521399707760
 - It should be fast enough to run in <1 second
 - Write to a file (fib.txt)
@@ -241,10 +227,8 @@ the previous plot.
 - Plot it as a histogram in matplotlib
   - Both plots should be visible at the same time!
 
-# Task 5
-
-## Advent of Code 2021, day 14
-
+# Task 4: Advent of Code
+## Advent of Code 2021, Day 14
 ### Part 1
 The incredible pressures at this depth are starting to put a strain on your submarine. The submarine has polymerization equipment that would produce suitable materials to reinforce the submarine, and the nearby volcanically-active caves should even have the necessary input elements in sufficient quantities.
 
