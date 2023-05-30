@@ -1,4 +1,6 @@
-# copilot-study
+This repo contains the qualitative study materials for the paper [Grounded Copilot: How Programmers Interact with Code-Generating Models (OOPSLA 2023)](https://dl.acm.org/doi/pdf/10.1145/3586030).
+
+# Copilot-Study
 Thanks for taking part in this study!
 We want to understand how people interact with Copilot.
 - What kind of tasks do you use Copilot for?
